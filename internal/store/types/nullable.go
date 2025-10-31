@@ -30,7 +30,7 @@ func (t *NullableTime) Scan(value any) error {
 }
 
 // Value implements driver.Valuer
-func (t NullableTime) Value() (driver.Value, error) {
+func (t *NullableTime) Value() (driver.Value, error) {
 	if t.Time == nil {
 		return nil, nil
 	}
@@ -38,7 +38,7 @@ func (t NullableTime) Value() (driver.Value, error) {
 }
 
 // MarshalJSON implements json.Marshaler
-func (t NullableTime) MarshalJSON() ([]byte, err) {
+func (t *NullableTime) MarshalJSON() ([]byte, error) {
 	if t.Time == nil {
 		return json.Marshal(nil)
 	}
