@@ -41,7 +41,7 @@ CREATE TABLE IF NOT EXISTS media(
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     created_by BIGINT REFERENCES users(id) ON DELETE RESTRICT,
     updated_at TIMESTAMPTZ,
-    updated_by BIGINT REFERENCES users(id) ON DELETE RESTRICT,
+    updated_by BIGINT REFERENCES users(id) ON DELETE RESTRICT
 );
 
 CREATE TABLE IF NOT EXISTS films(
@@ -92,4 +92,4 @@ CREATE TABLE IF NOT EXISTS diary_entry(
     rating INTEGER,
     description TEXT,
     is_private BOOLEAN NOT NULL DEFAULT FALSE
-)
+);

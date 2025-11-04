@@ -3,3 +3,9 @@ run:
 
 genkey:
 	go run ./cmd/genkey/main.go
+
+migrate-up:
+	go run ./cmd/migrate -action up
+
+migrate-down:
+	go run ./cmd/migrate -action down

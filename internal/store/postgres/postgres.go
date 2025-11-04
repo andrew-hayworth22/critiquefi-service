@@ -30,6 +30,10 @@ type repo struct {
 	users userPG
 }
 
+func (db *DB) DB() *sql.DB {
+	return db.db
+}
+
 func (d *DB) Repo() *repo {
 	r := &repo{db: d.db}
 	r.users.repo = r
