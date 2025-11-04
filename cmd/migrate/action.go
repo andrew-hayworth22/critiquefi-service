@@ -5,8 +5,9 @@ import "errors"
 type Action string
 
 const (
-	Up   Action = "up"
-	Down Action = "down"
+	Up    Action = "up"
+	Down  Action = "down"
+	Fresh Action = "fresh"
 )
 
 func ParseAction(action string) (Action, error) {
@@ -15,6 +16,8 @@ func ParseAction(action string) (Action, error) {
 		return Up, nil
 	case "down":
 		return Down, nil
+	case "fresh":
+		return Fresh, nil
 	default:
 		return "", errors.New("invalid action")
 	}

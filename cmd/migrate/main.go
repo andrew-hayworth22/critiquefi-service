@@ -2,12 +2,13 @@ package main
 
 import (
 	"flag"
+	"log"
+	"os"
+
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/joho/godotenv"
-	"log"
-	"os"
 )
 
 func main() {
@@ -45,6 +46,13 @@ func main() {
 			log.Fatal(err)
 		}
 		return
+	case Fresh:
+		if err := m.Down(); err != nil {
+			log.Fatal(err)
+		}
+		if err := m.Up(); err != nil {
+			log.Fatal(err)
+		}
+		return
 	}
-
 }
