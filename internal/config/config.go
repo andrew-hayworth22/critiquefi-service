@@ -20,7 +20,7 @@ type Config struct {
 func Load() (Config, error) {
 	cfg := Config{
 		Port:         getenv("PORT", "8080"),
-		DatabaseURL:  getenv("DATABASE_URL", ""),
+		DatabaseURL:  getenv("DB_URL", ""),
 		JWTSecret:    getenv("JWT_SECRET", ""),
 		CORSOrigins:  splitCSV(getenv("CORS_ORIGINS", "http://localhost:3000")),
 		CookieDomain: getenv("COOKIE_DOMAIN", "localhost"),

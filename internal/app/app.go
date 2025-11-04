@@ -14,7 +14,7 @@ type App struct {
 func NewApp(db store.Repo) *App {
 	r := chi.NewRouter()
 
-	sysApp := sys.NewSysApp()
+	sysApp := sys.NewSysApp(db)
 
 	r.Mount("/", sysApp.Router())
 

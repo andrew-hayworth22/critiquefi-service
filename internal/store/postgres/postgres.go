@@ -26,13 +26,19 @@ func Open(dsn string) (*DB, error) {
 type repo struct {
 	db    *sql.DB
 	tx    *sql.Tx
+	sys   sysPG
 	users userPG
 }
 
 func (d *DB) Repo() *repo {
 	r := &repo{db: d.db}
 	r.users.repo = r
+	r.sys.repo = r
 	return r
+}
+
+func (r *repo) Sys() store.SysStore {
+	return &r.sys
 }
 
 func (r *repo) Users() store.UserStore {
@@ -56,6 +62,10 @@ func (r *repo) Commit(ctx context.Context) error {
 
 func (r *repo) Rollback(ctx context.Context) error {
 	return r.tx.Rollback()
+}
+
+func (r *repo) Ping() error {
+	return r.db.Ping()
 }
 
 func (r *repo) execer() interface {

@@ -4,6 +4,7 @@ import "context"
 
 // Repo represents the functionality needed to store application data
 type Repo interface {
+	Sys() SysStore
 	Users() UserStore
 
 	BeginTx(ctx context.Context) (RepoTx, error)

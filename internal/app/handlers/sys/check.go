@@ -11,8 +11,26 @@ func (app *App) liveness(w http.ResponseWriter, r *http.Request) {
 	}{
 		"ok",
 	}
-	err := sdk.Respond(w, response, http.StatusOK)
-	if err != nil {
+
+	if err := sdk.Respond(w, response, http.StatusOK); err != nil {
 		sdk.HandleError(w, err)
+	}
+}
+
+func (app *App) readiness(w http.ResponseWriter, r *http.Request) {
+	response := struct {
+		Status string `json:"status"`
+	}{
+		"ok",
+	}
+
+	if err := app.repo.Sys().Ping(); err != nil {
+		sdk.HandleError(w, err)
+		return
+	}
+
+	if err := sdk.Respond(w, response, http.StatusOK); err != nil {
+		sdk.HandleError(w, err)
+		return
 	}
 }
