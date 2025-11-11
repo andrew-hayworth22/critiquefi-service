@@ -2,23 +2,19 @@ package main
 
 import (
 	"errors"
+	"log"
+	"net/http"
+
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/app/sdk"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/config"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/joho/godotenv"
-	"log"
-	"net/http"
 )
 
 func main() {
-	// Load environment
-	if err := godotenv.Load(); err != nil {
-		log.Fatalf("error loading .env file: %v", err)
-	}
-
 	// Build configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -40,8 +36,11 @@ func main() {
 		log.Fatalf("error running migrations: %v", err)
 	}
 
+	// Create JWT package
+	jwt := sdk.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
+
 	// Create application
-	a := app.NewApp(db.Repo())
+	a := app.NewApp(db.Repo(), jwt)
 
 	err = http.ListenAndServe(cfg.Port, a.Server)
 	if err != nil {

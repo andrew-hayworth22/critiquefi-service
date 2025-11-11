@@ -2,6 +2,7 @@ package sdk
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 )
 
@@ -39,6 +40,7 @@ func HandleError(w http.ResponseWriter, err error) {
 	}
 
 	if e == nil {
+		fmt.Println(err)
 		e = NewError(http.StatusInternalServerError, "internal server error")
 	}
 

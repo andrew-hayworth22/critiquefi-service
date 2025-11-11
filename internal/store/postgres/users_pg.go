@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres/tools"
 )
@@ -81,7 +82,7 @@ SELECT
 	created_at,
 	updated_at,
 	last_login
-FROM users 
+FROM users
 WHERE email = $1`
 
 	row := u.repo.queryer().QueryRowContext(ctx, q, email)

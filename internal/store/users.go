@@ -2,8 +2,9 @@ package store
 
 import (
 	"context"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/store/types"
 	"time"
+
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store/types"
 )
 
 // User represents a user in the system
@@ -30,7 +31,7 @@ type UserUpdate struct {
 	IsActive     *bool
 }
 
-// UserStore defines the functionality needed to store users
+// UserStore defines the functionality needed to store auth
 type UserStore interface {
 	Create(ctx context.Context, u User) (int64, error)
 	GetByID(ctx context.Context, id int64) (*User, error)
