@@ -6,19 +6,19 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type App struct {
-	repo store.Repo
-	jwt  *sdk.JWTManager
+type AuthApp struct {
+	db  store.AuthStore
+	jwt *sdk.JWTManager
 }
 
-func NewAuthApp(r store.Repo, jwt *sdk.JWTManager) *App {
-	return &App{
-		repo: r,
-		jwt:  jwt,
+func NewAuthApp(db store.AuthStore, jwt *sdk.JWTManager) *AuthApp {
+	return &AuthApp{
+		db:  db,
+		jwt: jwt,
 	}
 }
 
-func (app *App) Router() *chi.Mux {
+func (app *AuthApp) Router() *chi.Mux {
 	r := chi.NewRouter()
 	r.Post("/register", app.Register)
 	return r

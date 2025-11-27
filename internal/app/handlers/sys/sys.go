@@ -5,17 +5,17 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-type App struct {
-	repo store.Repo
+type SysApp struct {
+	db store.SysStore
 }
 
-func NewSysApp(r store.Repo) *App {
-	return &App{
-		repo: r,
+func NewSysApp(db store.SysStore) *SysApp {
+	return &SysApp{
+		db: db,
 	}
 }
 
-func (app *App) Router() *chi.Mux {
+func (app *SysApp) Router() *chi.Mux {
 	r := chi.NewRouter()
 	r.Get("/liveness", app.liveness)
 	r.Get("/readiness", app.readiness)

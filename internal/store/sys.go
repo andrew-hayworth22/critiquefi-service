@@ -1,5 +1,7 @@
 package store
 
+import "context"
+
 type SysStore interface {
-	Ping() error
+	Ping(ctx context.Context) error
 }

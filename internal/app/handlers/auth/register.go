@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/sdk"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/types"
 )
 
@@ -61,14 +60,14 @@ func (r *RegisterRequest) Validate() error {
 	return nil
 }
 
-func (app *App) Register(w http.ResponseWriter, r *http.Request) {
+func (app *AuthApp) Register(w http.ResponseWriter, r *http.Request) {
 	var request RegisterRequest
 	if err := sdk.Decode(r, &request); err != nil {
 		sdk.HandleError(w, err)
 		return
 	}
 
-	conflictingUser, err := app.repo.Users().GetByEmail(r.Context(), request.Email)
+	conflictingUser, err := app.db.GetUserByEmail(r.Context(), request.Email)
 	if err != nil {
 		sdk.HandleError(w, err)
 		return
@@ -85,7 +84,7 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user := store.User{
+	user := types.User{
 		Email:        request.Email,
 		DisplayName:  request.DisplayName,
 		Name:         request.Name,
@@ -97,7 +96,7 @@ func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt:    types.NullableTime{},
 	}
 
-	id, err := app.repo.Users().Create(r.Context(), user)
+	id, err := app.db.CreateUser(r.Context(), user)
 	if err != nil {
 		sdk.HandleError(w, err)
 		return

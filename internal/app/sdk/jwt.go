@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store/types"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -26,7 +26,7 @@ func NewJWTManager(secret string, ttl time.Duration) *JWTManager {
 	}
 }
 
-func (j *JWTManager) GenerateToken(user *store.User) (string, error) {
+func (j *JWTManager) GenerateToken(user *types.User) (string, error) {
 	claims := &JWTClaims{
 		UserId:  user.ID,
 		IsAdmin: user.IsAdmin,

@@ -1,11 +1,14 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/auth"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/sys"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/sdk"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/config"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
@@ -15,6 +18,8 @@ import (
 )
 
 func main() {
+	ctx := context.Background()
+
 	// Build configuration
 	cfg, err := config.Load()
 	if err != nil {
@@ -22,10 +27,7 @@ func main() {
 	}
 
 	// Establish database connection
-	db, err := postgres.Open(cfg.DatabaseURL)
-	if err != nil {
-		log.Fatalf("error connecting to database: %v", err)
-	}
+	db := postgres.NewPool(ctx, cfg.DatabaseURL, cfg.MaxDBConns, cfg.MinDBConns, cfg.MaxConnLifetime, cfg.HealthCheckPeriod)
 
 	// Run migrations
 	m, err := migrate.New("file://migrations", cfg.DatabaseURL)
@@ -39,10 +41,22 @@ func main() {
 	// Create JWT package
 	jwt := sdk.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
 
-	// Create application
-	a := app.NewApp(db.Repo(), jwt)
+	// Build storage packages
+	sysDb := postgres.NewSysPG(db)
+	authDb := postgres.NewAuthPG(db)
 
-	err = http.ListenAndServe(cfg.Port, a.Server)
+	// Build application packages
+	authApp := auth.NewAuthApp(authDb, jwt)
+	sysApp := sys.NewSysApp(sysDb)
+
+	// Create application
+	a := app.NewApp(
+		cfg,
+		sysApp,
+		authApp,
+	)
+
+	err = http.ListenAndServe(cfg.Port, a)
 	if err != nil {
 		log.Fatalf("error starting server: %v", err)
 	}

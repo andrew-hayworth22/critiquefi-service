@@ -3,18 +3,20 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 
-	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres/tools"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store/types"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // userPg the postgres implementation of the user store
 type userPG struct {
-	repo *repo
+	db *pgxpool.Pool
 }
 
 // Create creates a user record
-func (u *userPG) Create(ctx context.Context, usr store.User) (int64, error) {
+func (u *userPG) Create(ctx context.Context, usr types.User) (int64, error) {
 	const q = `
 INSERT INTO users (
 	email,
@@ -28,7 +30,7 @@ RETURNING id`
 
 	var id int64
 
-	err := u.repo.queryer().QueryRowContext(ctx, q,
+	err := u.db.QueryRow(ctx, q,
 		usr.Email,
 		usr.DisplayName,
 		usr.Name,
@@ -41,7 +43,7 @@ RETURNING id`
 }
 
 // GetByID fetches a user by their ID
-func (u *userPG) GetByID(ctx context.Context, id int64) (*store.User, error) {
+func (u *userPG) GetByID(ctx context.Context, id int64) (*types.User, error) {
 	const q = `
 SELECT
 	id,
@@ -57,10 +59,10 @@ SELECT
 FROM users
 WHERE id = $1`
 
-	row := u.repo.queryer().QueryRowContext(ctx, q, id)
-	var usr store.User
+	row := u.db.QueryRow(ctx, q, id)
+	var usr types.User
 	if err := row.Scan(&usr.ID, &usr.Email, &usr.DisplayName, &usr.Name, &usr.PasswordHash, &usr.IsAdmin, &usr.IsActive, &usr.CreatedAt, &usr.UpdatedAt, &usr.LastLogin); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -69,7 +71,7 @@ WHERE id = $1`
 }
 
 // GetByEmail fetches a user record by their email
-func (u *userPG) GetByEmail(ctx context.Context, email string) (*store.User, error) {
+func (u *userPG) GetByEmail(ctx context.Context, email string) (*types.User, error) {
 	const q = `
 SELECT
 	id,
@@ -85,10 +87,10 @@ SELECT
 FROM users
 WHERE email = $1`
 
-	row := u.repo.queryer().QueryRowContext(ctx, q, email)
-	var usr store.User
+	row := u.db.QueryRow(ctx, q, email)
+	var usr types.User
 	if err := row.Scan(&usr.ID, &usr.Email, &usr.DisplayName, &usr.Name, &usr.PasswordHash, &usr.IsAdmin, &usr.IsActive, &usr.CreatedAt, &usr.UpdatedAt, &usr.LastLogin); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
@@ -97,7 +99,7 @@ WHERE email = $1`
 }
 
 // Update updates a user record
-func (u *userPG) Update(ctx context.Context, id int64, usr store.UserUpdate) error {
+func (u *userPG) Update(ctx context.Context, id int64, usr types.UserUpdate) error {
 	sb := tools.NewSetBuilder()
 	sb.SetIf(usr.Email != nil, "email", *usr.Email)
 	sb.SetIf(usr.DisplayName != nil, "display_name", *usr.DisplayName)
@@ -111,6 +113,6 @@ func (u *userPG) Update(ctx context.Context, id int64, usr store.UserUpdate) err
 
 	q := `UPDATE users SET ` + sb.BuildSet() + `WHERE id = $1`
 	args := append(sb.Args(), id)
-	_, err := u.repo.execer().ExecContext(ctx, q, args...)
+	_, err := u.db.Exec(ctx, q, args...)
 	return err
 }

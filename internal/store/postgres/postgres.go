@@ -3,90 +3,33 @@ package postgres
 
 import (
 	"context"
-	"database/sql"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
-	_ "github.com/jackc/pgx/v5/stdlib"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type DB struct {
-	db *sql.DB
-}
-
-func Open(dsn string) (*DB, error) {
-	db, err := sql.Open("pgx", dsn)
+// NewPool establishes a connection pool to a postgres database
+func NewPool(ctx context.Context, url string, maxConns, minConns int32, maxConnLifetime, healthCheckPeriod time.Duration) *pgxpool.Pool {
+	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	db.SetMaxOpenConns(10)
-	db.SetMaxIdleConns(5)
-	return &DB{db}, nil
-}
+	cfg.MaxConns = maxConns
+	cfg.MinConns = minConns
+	cfg.MaxConnLifetime = maxConnLifetime
+	cfg.HealthCheckPeriod = healthCheckPeriod
 
-// repo is the postgres implementation of the application's store
-type repo struct {
-	db    *sql.DB
-	tx    *sql.Tx
-	sys   sysPG
-	users userPG
-}
-
-func (db *DB) DB() *sql.DB {
-	return db.db
-}
-
-func (d *DB) Repo() *repo {
-	r := &repo{db: d.db}
-	r.users.repo = r
-	r.sys.repo = r
-	return r
-}
-
-func (r *repo) Sys() store.SysStore {
-	return &r.sys
-}
-
-func (r *repo) Users() store.UserStore {
-	return &r.users
-}
-
-func (r *repo) BeginTx(ctx context.Context) (store.RepoTx, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	repoTx := &repo{db: r.db, tx: tx}
-	repoTx.users.repo = repoTx
-	return repoTx, nil
-}
-
-func (r *repo) Commit(ctx context.Context) error {
-	return r.tx.Commit()
-}
-
-func (r *repo) Rollback(ctx context.Context) error {
-	return r.tx.Rollback()
-}
-
-func (r *repo) Ping() error {
-	return r.db.Ping()
-}
-
-func (r *repo) execer() interface {
-	ExecContext(context.Context, string, ...any) (sql.Result, error)
-} {
-	if r.tx != nil {
-		return r.tx
+	// Ping the database to ensure it's up
+	ctxPing, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	if err := pool.Ping(ctxPing); err != nil {
+		panic(err)
 	}
-	return r.db
-}
 
-func (r *repo) queryer() interface {
-	QueryRowContext(context.Context, string, ...any) *sql.Row
-	QueryContext(context.Context, string, ...any) (*sql.Rows, error)
-} {
-	if r.tx != nil {
-		return r.tx
-	}
-	return r.db
+	return pool
 }

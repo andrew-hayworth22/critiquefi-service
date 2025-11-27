@@ -1,29 +1,39 @@
 package app
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/auth"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/sys"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/app/sdk"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/config"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 )
 
 type App struct {
-	Server chi.Router
-	db     store.Repo
+	cfg    config.Config
+	Server *http.Server
 }
 
-func NewApp(db store.Repo, jwt *sdk.JWTManager) *App {
+func NewApp(
+	cfg config.Config,
+	sys *sys.SysApp,
+	auth *auth.AuthApp,
+) chi.Router {
+
 	r := chi.NewRouter()
 
-	sysApp := sys.NewSysApp(db)
-	authApp := auth.NewAuthApp(db, jwt)
+	r.Use(
+		middleware.RequestID,
+		middleware.RealIP,
+		middleware.Logger,
+		middleware.Recoverer,
+		middleware.Timeout(60*time.Second),
+	)
 
-	r.Mount("/sys", sysApp.Router())
-	r.Mount("/auth", authApp.Router())
+	r.Mount("/sys", sys.Router())
+	r.Mount("/auth", auth.Router())
 
-	return &App{
-		db:     db,
-		Server: r,
-	}
+	return r
 }
