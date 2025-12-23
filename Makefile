@@ -1,9 +1,18 @@
-build:
+FRONTEND_DIR = frontend-svelte
+
+build-api:
 	docker build \
 	  --build-arg VERSION=1.0.0 \
 	  --build-arg COMMIT=$(git rev-parse --short HEAD) \
 	  -t critiquefi-service:latest \
 	  -t critiquefi-service:1.0.0 .
+
+build-fe:
+	cd $(FRONTEND_DIR) && npm install && npm run build
+
+build-all: build-fe build-api
+
+build-run: build-fe build-api run
 
 run:
 	docker stop critiquefi-service && docker rm critiquefi-service && docker run -d --env-file .env -p 8080:8080 --name critiquefi-service critiquefi-service

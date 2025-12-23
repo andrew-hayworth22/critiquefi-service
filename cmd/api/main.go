@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"log"
 	"net/http"
 
+	critiquefi_service "github.com/andrew-hayworth22/critiquefi-service"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/auth"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/sys"
@@ -54,6 +56,14 @@ func main() {
 		sysApp,
 		authApp,
 	)
+
+	// Serve frontend
+	fileSystem, err := fs.Sub(critiquefi_service.FrontendFiles, "frontend-svelte/dist")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	a.HandleFunc("/*", frontendHandler(fileSystem))
 
 	err = http.ListenAndServe(cfg.Port, a)
 	if err != nil {
