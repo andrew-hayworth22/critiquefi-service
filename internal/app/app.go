@@ -17,9 +17,8 @@ type App struct {
 }
 
 func NewApp(
-	cfg config.Config,
 	sys *sys.SysApp,
-	auth *auth.AuthApp,
+	auth *auth.App,
 ) chi.Router {
 
 	r := chi.NewRouter()
@@ -32,8 +31,8 @@ func NewApp(
 		middleware.Timeout(60*time.Second),
 	)
 
-	r.Mount("/sys", sys.Router())
-	r.Mount("/auth", auth.Router())
+	r.Mount("/api/sys", sys.Router())
+	r.Mount("/api/auth", auth.Router())
 
 	return r
 }

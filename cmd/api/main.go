@@ -46,12 +46,11 @@ func main() {
 	authDb := postgres.NewAuthPG(db)
 
 	// Build application packages
-	authApp := auth.NewAuthApp(authDb, jwt)
+	authApp := auth.NewApp(authDb, jwt, cfg.RefreshTokenTTL, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
 	sysApp := sys.NewSysApp(sysDb)
 
 	// Create application
 	a := app.NewApp(
-		cfg,
 		sysApp,
 		authApp,
 	)

@@ -16,12 +16,7 @@ type RegisterRequest struct {
 	Name                 string `json:"name"`
 	Password             string `json:"password"`
 	PasswordConfirmation string `json:"confirm_password"`
-}
-
-type RegisterResponse struct {
-	AccessToken string `json:"access_token"`
-	ExpiresIn   int64  `json:"expires_in"`
-	TokenType   string `json:"token_type"`
+	Remember             bool   `json:"remember"`
 }
 
 func (r *RegisterRequest) Decode(data []byte) error {
@@ -60,7 +55,7 @@ func (r *RegisterRequest) Validate() error {
 	return nil
 }
 
-func (app *AuthApp) Register(w http.ResponseWriter, r *http.Request) {
+func (app *App) Register(w http.ResponseWriter, r *http.Request) {
 	var request RegisterRequest
 	if err := sdk.Decode(r, &request); err != nil {
 		sdk.HandleError(w, err)
@@ -103,17 +98,5 @@ func (app *AuthApp) Register(w http.ResponseWriter, r *http.Request) {
 	}
 	user.ID = id
 
-	accessToken, err := app.jwt.GenerateToken(&user)
-	if err != nil {
-		sdk.HandleError(w, err)
-		return
-	}
-
-	response := RegisterResponse{
-		AccessToken: accessToken,
-		ExpiresIn:   int64(app.jwt.AccessTokenTTL.Seconds()),
-		TokenType:   "bearer",
-	}
-
-	_ = sdk.Respond(w, response, http.StatusOK)
+	app.issueTokensAndRespond(r.Context(), w, &user, r.UserAgent(), request.Remember)
 }

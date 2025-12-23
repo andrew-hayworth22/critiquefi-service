@@ -12,17 +12,19 @@ import (
 
 // Config represents all the configuration values for the application
 type Config struct {
-	Port              string
-	Env               string
-	DatabaseURL       string
-	MaxDBConns        int32
-	MinDBConns        int32
-	MaxConnLifetime   time.Duration
-	HealthCheckPeriod time.Duration
-	JWTSecret         string
-	AccessTokenTTL    time.Duration
-	CORSOrigins       []string
-	CookieDomain      string
+	Port                     string
+	Env                      string
+	DatabaseURL              string
+	MaxDBConns               int32
+	MinDBConns               int32
+	MaxConnLifetime          time.Duration
+	HealthCheckPeriod        time.Duration
+	JWTSecret                string
+	AccessTokenTTL           time.Duration
+	RefreshTokenTTL          time.Duration
+	RefreshTokenCookieName   string
+	RefreshTokenCookieDomain string
+	CORSOrigins              []string
 }
 
 // Load gets the configuration values from the application environment
@@ -51,18 +53,24 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	refreshTokenTTL, err := getDuration("REFRESH_TOKEN_TTL", 7*24*time.Hour)
+	if err != nil {
+		return Config{}, err
+	}
 
 	cfg := Config{
-		Port:              ":" + get("PORT", "8080"),
-		DatabaseURL:       get("DB_URL", ""),
-		MaxDBConns:        int32(maxDBConns),
-		MinDBConns:        int32(minDBConns),
-		MaxConnLifetime:   maxConnLifetime,
-		HealthCheckPeriod: healthCheckPeriod,
-		JWTSecret:         jwtSecret,
-		AccessTokenTTL:    accessTokenTTL,
-		CORSOrigins:       getCSV("CORS_ORIGINS", "http://localhost:3000"),
-		CookieDomain:      get("COOKIE_DOMAIN", "localhost"),
+		Port:                     ":" + get("PORT", "8080"),
+		DatabaseURL:              get("DB_URL", ""),
+		MaxDBConns:               int32(maxDBConns),
+		MinDBConns:               int32(minDBConns),
+		MaxConnLifetime:          maxConnLifetime,
+		HealthCheckPeriod:        healthCheckPeriod,
+		JWTSecret:                jwtSecret,
+		AccessTokenTTL:           accessTokenTTL,
+		RefreshTokenTTL:          refreshTokenTTL,
+		CORSOrigins:              getCSV("CORS_ORIGINS", "http://localhost:3000"),
+		RefreshTokenCookieDomain: get("REFRESH_TOKEN_COOKIE_DOMAIN", "localhost"),
+		RefreshTokenCookieName:   get("REFRESH_TOKEN_COOKIE_NAME", "rt"),
 	}
 
 	if cfg.JWTSecret == "" {
