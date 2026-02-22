@@ -3,26 +3,29 @@ CREATE EXTENSION IF NOT EXISTS citext;
 DO $$ BEGIN
     IF NOT EXISTS (SELECT FROM pg_type WHERE typname = 'media_type') THEN
         CREATE TYPE media_type AS ENUM ('FILM', 'BOOK', 'GAME', 'SHOW', 'MUSIC');
-    end if;
+    END IF;
     IF NOT EXISTS (SELECT FROM pg_type WHERE typname = 'film_type') THEN
         CREATE TYPE film_type AS ENUM ('FEATURE FILM', 'SHORT FILM');
-    end if;
+    END IF;
     IF NOT EXISTS (SELECT FROM pg_type WHERE typname = 'book_type') THEN
         CREATE TYPE book_type AS ENUM ('NOVEL', 'SHORT STORY', 'COLLECTION');
-    end if;
+    END IF;
+    IF NOT EXISTS (SELECT FROM pg_type WHERE typname = 'game_type') THEN
+        CREATE TYPE game_type AS ENUM ('VIDEO GAME', 'DLC');
+    END IF;
     IF NOT EXISTS (SELECT FROM pg_type WHERE typname = 'show_type') THEN
         CREATE TYPE show_type AS ENUM ('SEASON', 'MINI SERIES');
-    end if;
+    END IF;
     IF NOT EXISTS (SELECT FROM pg_type WHERE typname = 'music_type') THEN
-        CREATE TYPE music_type AS ENUM ('ALBUM', 'EXTENDED PLAY');
-    end if;
+        CREATE TYPE music_type AS ENUM ('ALBUM', 'EXTENDED PLAY', 'MIXTAPE');
+    END IF;
 END $$;
 
 CREATE TABLE IF NOT EXISTS users(
     id BIGSERIAL PRIMARY KEY,
     email CITEXT UNIQUE NOT NULL,
-    display_name TEXT UNIQUE NOT NULL,
-    name VARCHAR(255) NOT NULL,
+    display_name CITEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
     password_hash TEXT NOT NULL,
     is_admin BOOLEAN NOT NULL DEFAULT FALSE,
     last_login TIMESTAMPTZ,
@@ -34,7 +37,7 @@ CREATE TABLE IF NOT EXISTS users(
 CREATE TABLE IF NOT EXISTS media(
     id BIGSERIAL PRIMARY KEY,
     media_type media_type NOT NULL,
-    title TEXT NOT NULL,
+    title CITEXT NOT NULL,
     release_date DATE NOT NULL,
     description TEXT,
     external_references JSONB DEFAULT '{}'::JSONB,
@@ -57,7 +60,8 @@ CREATE TABLE IF NOT EXISTS books(
 );
 
 CREATE TABLE IF NOT EXISTS games(
-    media_id BIGINT PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE
+    media_id BIGINT PRIMARY KEY REFERENCES media(id) ON DELETE CASCADE,
+    game_type game_type NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS shows(
