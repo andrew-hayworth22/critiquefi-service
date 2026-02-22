@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS media(
     media_type media_type NOT NULL,
     title CITEXT NOT NULL,
     release_date DATE NOT NULL,
+    year INTEGER NOT NULL,
     description TEXT,
     external_references JSONB DEFAULT '{}'::JSONB,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

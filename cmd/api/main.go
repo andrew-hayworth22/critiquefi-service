@@ -8,10 +8,12 @@ import (
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/auth"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/media"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/sys"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/sdk"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/config"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -38,21 +40,26 @@ func main() {
 		log.Fatalf("error running migrations: %v", err)
 	}
 
-	// Create JWT package
-	jwt := sdk.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
+	// Create JWT packages
+	jwtManager := sdk.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
+	jwtHandler := jwtauth.New("HS256", []byte(cfg.JWTSecret), nil)
 
 	// Build storage packages
 	sysDb := postgres.NewSysPG(db)
 	authDb := postgres.NewAuthPG(db)
+	mediaDb := postgres.NewMediaPG(db)
 
 	// Build application packages
-	authApp := auth.NewApp(authDb, jwt, cfg.RefreshTokenTTL, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
-	sysApp := sys.NewSysApp(sysDb)
+	authApp := auth.NewApp(authDb, jwtManager, cfg.RefreshTokenTTL, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
+	sysApp := sys.NewApp(sysDb)
+	mediaApp := media.NewApp(jwtHandler, mediaDb)
 
 	// Create application
 	a := app.NewApp(
+		jwtHandler,
 		sysApp,
 		authApp,
+		mediaApp,
 	)
 
 	err = http.ListenAndServe(cfg.Port, a)

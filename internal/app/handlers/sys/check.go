@@ -6,7 +6,7 @@ import (
 	"github.com/andrew-hayworth22/critiquefi-service/internal/app/sdk"
 )
 
-func (app *SysApp) liveness(w http.ResponseWriter, r *http.Request) {
+func (app *App) liveness(w http.ResponseWriter, r *http.Request) {
 	response := struct {
 		Status string `json:"status"`
 	}{
@@ -18,7 +18,7 @@ func (app *SysApp) liveness(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (app *SysApp) readiness(w http.ResponseWriter, r *http.Request) {
+func (app *App) readiness(w http.ResponseWriter, r *http.Request) {
 	response := struct {
 		Status string `json:"status"`
 	}{
