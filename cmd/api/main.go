@@ -50,7 +50,7 @@ func main() {
 	mediaDb := postgres.NewMediaPG(db)
 
 	// Build application packages
-	authApp := auth.NewApp(authDb, jwtManager, cfg.RefreshTokenTTL, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
+	authApp := auth.NewApp(authDb, jwtManager, jwtHandler, cfg.RefreshTokenTTL, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
 	sysApp := sys.NewApp(sysDb)
 	mediaApp := media.NewApp(jwtHandler, mediaDb)
 

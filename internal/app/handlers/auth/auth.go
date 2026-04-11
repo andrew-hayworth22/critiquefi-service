@@ -9,20 +9,23 @@ import (
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/types"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/jwtauth/v5"
 )
 
 type App struct {
 	db                       store.AuthStore
-	jwt                      *sdk.JWTManager
+	jwtManager               *sdk.JWTManager
+	jwtHandler               *jwtauth.JWTAuth
 	refreshTokenTTL          time.Duration
 	refreshTokenCookieName   string
 	refreshTokenCookieDomain string
 }
 
-func NewApp(db store.AuthStore, jwt *sdk.JWTManager, refreshTokenTTL time.Duration, refreshTokenCookieName string, refreshTokenCookieDomain string) *App {
+func NewApp(db store.AuthStore, jwtManager *sdk.JWTManager, jwtHandler *jwtauth.JWTAuth, refreshTokenTTL time.Duration, refreshTokenCookieName string, refreshTokenCookieDomain string) *App {
 	return &App{
 		db:                       db,
-		jwt:                      jwt,
+		jwtManager:               jwtManager,
+		jwtHandler:               jwtHandler,
 		refreshTokenTTL:          refreshTokenTTL,
 		refreshTokenCookieName:   refreshTokenCookieName,
 		refreshTokenCookieDomain: refreshTokenCookieDomain,
@@ -31,9 +34,19 @@ func NewApp(db store.AuthStore, jwt *sdk.JWTManager, refreshTokenTTL time.Durati
 
 func (app *App) Router() *chi.Mux {
 	r := chi.NewRouter()
-	r.Post("/register", app.Register)
-	r.Post("/login", app.Login)
-	r.Post("/refresh", app.Refresh)
+
+	// protected routes
+	r.Group(func(r chi.Router) {
+		r.Use(jwtauth.Authenticator(app.jwtHandler))
+		r.Get("/me", app.Me)
+	})
+
+	// public routes
+	r.Group(func(r chi.Router) {
+		r.Post("/register", app.Register)
+		r.Post("/login", app.Login)
+		r.Post("/refresh", app.Refresh)
+	})
 	return r
 }
 
@@ -42,7 +55,7 @@ type authenticationResponse struct {
 }
 
 func (app *App) issueTokensAndRespond(ctx context.Context, w http.ResponseWriter, user *types.User, userAgent string, remember bool) {
-	accessToken, err := app.jwt.GenerateToken(user)
+	accessToken, err := app.jwtManager.GenerateToken(user)
 	if err != nil {
 		sdk.HandleError(w, err)
 		return
