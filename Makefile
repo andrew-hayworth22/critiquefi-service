@@ -1,5 +1,3 @@
-FRONTEND_DIR = frontend-svelte
-
 build:
 	docker build \
 	  --build-arg VERSION=1.0.0 \

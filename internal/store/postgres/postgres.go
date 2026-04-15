@@ -1,35 +1,72 @@
-// Package postgres wraps a connection to a postgres database
+// Package postgres interacts with a postgres database
 package postgres
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/jmoiron/sqlx"
 )
 
-// NewPool establishes a connection pool to a postgres database
-func NewPool(ctx context.Context, url string, maxConns, minConns int32, maxConnLifetime, healthCheckPeriod time.Duration) *pgxpool.Pool {
-	cfg, err := pgxpool.ParseConfig(url)
+type DBConfig struct {
+	URL             string
+	MaxOpenConns    int
+	MaxIdleConns    int
+	ConnMaxLifetime time.Duration
+	ConnMaxIdleTime time.Duration
+}
+
+// NewDB creates a new postgres database connection.
+func NewDB(ctx context.Context, cfg DBConfig) (*sqlx.DB, error) {
+	db, err := sqlx.ConnectContext(ctx, "pgx", cfg.URL)
 	if err != nil {
-		panic(err)
-	}
-	cfg.MaxConns = maxConns
-	cfg.MinConns = minConns
-	cfg.MaxConnLifetime = maxConnLifetime
-	cfg.HealthCheckPeriod = healthCheckPeriod
-
-	pool, err := pgxpool.NewWithConfig(ctx, cfg)
-	if err != nil {
-		panic(err)
+		return nil, fmt.Errorf("error connecting to postgres: %w", err)
 	}
 
-	// Ping the database to ensure it's up
-	ctxPing, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-	if err := pool.Ping(ctxPing); err != nil {
-		panic(err)
+	if err := db.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("error pinging postgres: %w", err)
 	}
 
-	return pool
+	db.SetMaxOpenConns(cfg.MaxOpenConns)
+	db.SetMaxIdleConns(cfg.MaxIdleConns)
+	db.SetConnMaxLifetime(cfg.ConnMaxLifetime)
+	db.SetConnMaxIdleTime(cfg.ConnMaxIdleTime)
+
+	return db, nil
+}
+
+// mapError maps postgres errors to our storage layer errors.
+// Falls back to the original error if not mapped.
+func mapError(err error) error {
+	if errors.Is(err, pgx.ErrNoRows) {
+		return store.ErrNotFound
+	}
+
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		switch pgErr.Code {
+		case "23505":
+			return store.ErrDuplicate
+		case "23503":
+			return store.ErrForeignKeyViolation
+		case "23502":
+			return store.ErrNotNullViolation
+		}
+	}
+
+	return err
+}
+
+// closeRows closes a row object and handles any errors.
+// Use this instead of deferring rows.Close() directly.
+func closeRows(rows *sqlx.Rows) {
+	if err := rows.Close(); err != nil {
+		return
+	}
 }

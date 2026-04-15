@@ -1,5 +1,5 @@
 # Build source code
-FROM golang:1.24.1-alpine AS builder
+FROM golang:1.26.2-alpine AS builder
 WORKDIR /src
 
 RUN apk add --no-cache git ca-certificates
@@ -30,7 +30,7 @@ COPY /migrations /app/migrations
 ENV PORT=8080
 EXPOSE ${PORT}
 
-HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -qO- "http://127.0.0.1:${PORT}/api/sys/liveness" >/dev/null 2>&1 || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --retries=3 CMD wget -qO- "http://127.0.0.1:${PORT}/liveness" >/dev/null 2>&1 || exit 1
 
 USER app
 ENTRYPOINT ["/app/api"]

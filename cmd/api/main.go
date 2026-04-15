@@ -4,16 +4,17 @@ import (
 	"context"
 	"errors"
 	"log"
-	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/andrew-hayworth22/critiquefi-service/internal/app"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/auth"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/media"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/app/handlers/sys"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/app/sdk"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/auth"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/config"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/middleware"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/server"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
-	"github.com/go-chi/jwtauth/v5"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/sys"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -28,8 +29,18 @@ func main() {
 		log.Fatalf("error loading config: %v", err)
 	}
 
+	// Setup logging
+	logger := cfg.NewLogger()
+	logger.Info("starting server", "ENV", cfg.Env, "PORT", cfg.Port, "LOG_LEVEL", cfg.LogLevel)
+
 	// Establish database connection
-	db := postgres.NewPool(ctx, cfg.DatabaseURL, cfg.MaxDBConns, cfg.MinDBConns, cfg.MaxConnLifetime, cfg.HealthCheckPeriod)
+	db, err := postgres.NewDB(ctx, postgres.DBConfig{
+		URL:             cfg.DatabaseURL,
+		MaxOpenConns:    cfg.MaxOpenDBConns,
+		MaxIdleConns:    cfg.MaxIdleDBConns,
+		ConnMaxLifetime: cfg.DBConnMaxLifetime,
+		ConnMaxIdleTime: cfg.DBConnMaxIdleTime,
+	})
 
 	// Run migrations
 	m, err := migrate.New("file://migrations", cfg.DatabaseURL)
@@ -40,30 +51,62 @@ func main() {
 		log.Fatalf("error running migrations: %v", err)
 	}
 
-	// Create JWT packages
-	jwtManager := sdk.NewJWTManager(cfg.JWTSecret, cfg.AccessTokenTTL)
-	jwtHandler := jwtauth.New("HS256", []byte(cfg.JWTSecret), nil)
-
 	// Build storage packages
-	sysDb := postgres.NewSysPG(db)
-	authDb := postgres.NewAuthPG(db)
-	mediaDb := postgres.NewMediaPG(db)
+	sysStore := postgres.NewSysStore(db)
+	authStore := postgres.NewAuthStore(db)
 
-	// Build application packages
-	authApp := auth.NewApp(authDb, jwtManager, jwtHandler, cfg.RefreshTokenTTL, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
-	sysApp := sys.NewApp(sysDb)
-	mediaApp := media.NewApp(jwtHandler, mediaDb)
+	// Build service packages
+	sysService := sys.NewService(sysStore)
+	authService := auth.NewService(auth.ServiceConfig{
+		Store:                    authStore,
+		AccessTokenKey:           cfg.JWTSecret,
+		AccessTokenTTL:           cfg.AccessTokenTTL,
+		RefreshTokenTTL:          cfg.RefreshTokenTTL,
+		RefreshTokenCookieName:   cfg.RefreshTokenCookieName,
+		RefreshTokenCookieDomain: cfg.RefreshTokenCookieDomain,
+	})
 
-	// Create application
-	a := app.NewApp(
-		jwtHandler,
-		sysApp,
-		authApp,
-		mediaApp,
-	)
+	// Build handler packages
+	sysHandler := sys.NewHandler(sysService)
+	authHandler := auth.NewHandler(authService)
 
-	err = http.ListenAndServe(cfg.Port, a)
-	if err != nil {
-		log.Fatalf("error starting server: %v", err)
+	// Build middleware packages
+	authMiddleware := middleware.NewAuthMiddleware(authService)
+
+	// Build router
+	dependencies := server.Dependencies{
+		Logger:         logger,
+		AuthHandler:    authHandler,
+		SysHandler:     sysHandler,
+		AuthMiddleware: authMiddleware,
+	}
+
+	srv := server.New(server.Config{
+		Addr:         cfg.Port,
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+		IdleTimeout:  cfg.IdleTimeout,
+	}, dependencies)
+
+	// Start server
+	go func() {
+		if err := srv.Start(); err != nil {
+			log.Fatalf("error starting server: %v", err)
+			os.Exit(1)
+		}
+	}()
+
+	// Wait for an interrupt signal to gracefully shut down the server with
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+
+	// Shutdown server after 30 seconds
+	shutdownCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+
+	if err := srv.Shutdown(shutdownCtx); err != nil {
+		log.Fatalf("error shutting down server: %v", err)
+		os.Exit(1)
 	}
 }
