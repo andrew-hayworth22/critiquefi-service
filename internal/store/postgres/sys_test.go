@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/testutil"
 )
 
 func TestSysStore_Ping(t *testing.T) {
@@ -12,6 +13,6 @@ func TestSysStore_Ping(t *testing.T) {
 		s := postgres.NewSysStore(testDB)
 
 		err := s.Ping(context.Background())
-		checkErr(err, nil, t)
+		testutil.CheckErr(err, nil, t)
 	})
 }

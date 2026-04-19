@@ -8,6 +8,7 @@ import (
 	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/testutil"
 )
 
 func TestAuthStore_CreateUser(t *testing.T) {
@@ -65,7 +66,7 @@ func TestAuthStore_CreateUser(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				id, err := s.CreateUser(context.Background(), tc.user)
-				checkErr(err, tc.expectedErr, t)
+				testutil.CheckErr(err, tc.expectedErr, t)
 
 				if tc.expectedErr == nil && id == 0 {
 					t.Fatal("expected non-zero user ID")
@@ -140,7 +141,7 @@ func TestAuthStore_GetUserById(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				user, err := s.GetUserByID(context.Background(), tc.userID)
-				checkErr(err, tc.expectedErr, t)
+				testutil.CheckErr(err, tc.expectedErr, t)
 
 				if user != tc.expectedUser {
 					t.Errorf("expected user: %v, got: %v", tc.expectedUser, user)
@@ -214,7 +215,7 @@ func TestAuthStore_GetUserByEmail(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				user, err := s.GetUserByEmail(context.Background(), tc.email)
-				checkErr(err, tc.expectedErr, t)
+				testutil.CheckErr(err, tc.expectedErr, t)
 
 				if user != tc.expectedUser {
 					t.Errorf("expected user: %v, got: %v", tc.expectedUser, user)
@@ -300,7 +301,7 @@ func TestAuthStore_CheckTakenFields(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				userFieldsTaken, err := s.CheckTakenUserFields(context.Background(), tc.newUser)
-				checkErr(err, tc.expectedErr, t)
+				testutil.CheckErr(err, tc.expectedErr, t)
 
 				if userFieldsTaken != tc.expectedUserFieldsTaken {
 					t.Errorf("expected user fields taken: %v, got: %v", tc.expectedUserFieldsTaken, userFieldsTaken)
@@ -358,7 +359,7 @@ func TestAuthStore_CreateRefreshToken(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				err := s.CreateRefreshToken(context.Background(), tc.refreshToken)
-				checkErr(err, tc.expectedErr, t)
+				testutil.CheckErr(err, tc.expectedErr, t)
 			})
 		}
 	})
@@ -398,7 +399,7 @@ func TestAuthStore_GetRefreshToken(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				token, err := s.GetRefreshToken(context.Background(), tc.tokenHash)
-				checkErr(err, tc.expectedErr, t)
+				testutil.CheckErr(err, tc.expectedErr, t)
 
 				if token.TokenHash != tc.expectedToken.TokenHash {
 					t.Errorf("expected token hash: %v, got: %v", tc.expectedToken.TokenHash, token.TokenHash)
@@ -433,7 +434,7 @@ func TestAuthStore_DeleteRefreshToken(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				err := s.DeleteRefreshToken(context.Background(), tc.tokenHash)
-				checkErr(err, tc.expectedErr, t)
+				testutil.CheckErr(err, tc.expectedErr, t)
 
 				rows, err := testDB.QueryContext(context.Background(), "SELECT * FROM refresh_tokens WHERE token_hash = $1", tc.tokenHash)
 				if err != nil || rows.Next() {

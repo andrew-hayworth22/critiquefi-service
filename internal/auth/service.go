@@ -161,16 +161,16 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent string, 
 		return
 	}
 
+	err = s.store.SetUserLastLogin(ctx, user.ID)
+	if err != nil {
+		return
+	}
+
 	if !remember {
 		return
 	}
 
 	refreshToken, err = s.GenerateRefreshToken(ctx, user, userAgent)
-	if err != nil {
-		return
-	}
-
-	err = s.store.SetUserLastLogin(ctx, user.ID)
 	if err != nil {
 		return
 	}

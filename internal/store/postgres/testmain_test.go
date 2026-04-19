@@ -2,7 +2,6 @@ package postgres_test
 
 import (
 	"context"
-	"errors"
 	"log"
 	"os"
 	"testing"
@@ -93,21 +92,5 @@ func resetTables(t *testing.T) {
     `)
 	if err != nil {
 		t.Fatalf("failed to seed tables: %v", err)
-	}
-}
-
-// checkErr checks for errors and fatals the test if there is an error
-func checkErr(actual error, expected error, t *testing.T) {
-	t.Helper()
-
-	if expected != nil {
-		if !errors.Is(actual, expected) {
-			t.Fatalf("expected error %v, got %v", expected, actual)
-		}
-		return
-	}
-
-	if actual != nil {
-		t.Fatalf("expected no error, got %v", actual)
 	}
 }

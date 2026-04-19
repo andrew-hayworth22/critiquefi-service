@@ -44,13 +44,13 @@ func (u NewUserRequest) Validate() error {
 		ve.Add("email", "invalid email address")
 	}
 	if len(u.DisplayName) < 3 {
-		ve.Add("display_name", "display name must be at least 3 characters long")
+		ve.Add("display_name", "display name must be between 3 and 20 characters long")
 	}
-	if len(u.Name) < 3 {
-		ve.Add("name", "name must be at least 3 characters long")
+	if len(u.Name) < 3 || len(u.Name) > 50 {
+		ve.Add("name", "name must be between 3 and 50 characters long")
 	}
-	if len(u.Password) < 8 {
-		ve.Add("password", "password must be at least 8 characters long")
+	if len(u.Password) < 8 || len(u.Password) > 64 {
+		ve.Add("password", "password must be between 8 and 64 characters long")
 	}
 	if u.Password != u.ConfirmPassword {
 		ve.Add("confirm_password", "passwords do not match")

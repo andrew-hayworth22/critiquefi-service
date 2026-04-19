@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/testutil"
 )
 
 type Method string
@@ -61,48 +62,40 @@ func (s *mockStore) next(method Method) call {
 
 func (s *mockStore) CreateUser(ctx context.Context, user models.NewUser) (int64, error) {
 	call := s.next(CreateUser)
-	return call.returns[0].(int64), convertError(call.returns[1])
+	return call.returns[0].(int64), testutil.ConvertError(call.returns[1])
 }
 
 func (s *mockStore) GetUserByID(ctx context.Context, id int64) (models.User, error) {
 	call := s.next(GetUserByID)
-	return call.returns[0].(models.User), convertError(call.returns[1])
+	return call.returns[0].(models.User), testutil.ConvertError(call.returns[1])
 }
 
 func (s *mockStore) GetUserByEmail(ctx context.Context, email string) (models.User, error) {
 	call := s.next(GetUserByEmail)
-	return call.returns[0].(models.User), convertError(call.returns[1])
+	return call.returns[0].(models.User), testutil.ConvertError(call.returns[1])
 }
 
 func (s *mockStore) CheckTakenUserFields(ctx context.Context, request models.NewUserRequest) (models.UserFieldsTaken, error) {
 	call := s.next(CheckTakenUserFields)
-	return call.returns[0].(models.UserFieldsTaken), convertError(call.returns[1])
+	return call.returns[0].(models.UserFieldsTaken), testutil.ConvertError(call.returns[1])
 }
 
 func (s *mockStore) SetUserLastLogin(ctx context.Context, id int64) error {
 	call := s.next(SetUserLastLogin)
-	return convertError(call.returns[0])
+	return testutil.ConvertError(call.returns[0])
 }
 
 func (s *mockStore) CreateRefreshToken(ctx context.Context, refreshToken models.RefreshToken) error {
 	call := s.next(CreateRefreshToken)
-	return convertError(call.returns[0])
+	return testutil.ConvertError(call.returns[0])
 }
 
 func (s *mockStore) GetRefreshToken(ctx context.Context, tokenHash string) (models.RefreshToken, error) {
 	call := s.next(GetRefreshToken)
-	return call.returns[0].(models.RefreshToken), convertError(call.returns[1])
+	return call.returns[0].(models.RefreshToken), testutil.ConvertError(call.returns[1])
 }
 
 func (s *mockStore) DeleteRefreshToken(ctx context.Context, tokenHash string) error {
 	call := s.next(DeleteRefreshToken)
-	return convertError(call.returns[0])
-}
-
-// convertError safely converts an any to an error
-func convertError(v any) error {
-	if v == nil {
-		return nil
-	}
-	return v.(error)
+	return testutil.ConvertError(call.returns[0])
 }
