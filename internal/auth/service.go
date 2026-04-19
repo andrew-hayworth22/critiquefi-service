@@ -99,7 +99,7 @@ func (s *Service) Register(ctx context.Context, newUserRequest models.NewUserReq
 	}
 
 	// Hash password
-	hashedPassword, err := crypto.Hash(newUserRequest.Password)
+	hashedPassword, err := crypto.HashPassword(newUserRequest.Password)
 	if err != nil {
 		return
 	}
@@ -180,10 +180,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent string, 
 
 // Logout invalidates a refresh token
 func (s *Service) Logout(ctx context.Context, refreshToken string) error {
-	refreshToken, err := crypto.Hash(refreshToken)
-	if err != nil {
-		return err
-	}
+	refreshToken = crypto.HashToken(refreshToken)
 
 	if err := s.store.DeleteRefreshToken(ctx, refreshToken); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -195,12 +192,9 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 }
 
 // Refresh refreshes an access token using a refresh token
-func (s *Service) Refresh(ctx context.Context, refreshToken string) (newRefreshToken, accessToken string, err error) {
+func (s *Service) Refresh(ctx context.Context, refreshToken string) (accessToken, newRefreshToken string, err error) {
 	// Hash provided refresh token
-	refreshToken, err = crypto.Hash(refreshToken)
-	if err != nil {
-		return "", "", err
-	}
+	refreshToken = crypto.HashToken(refreshToken)
 
 	// Fetch refresh token
 	token, err := s.store.GetRefreshToken(ctx, refreshToken)
@@ -284,13 +278,10 @@ func (s *Service) GenerateRefreshToken(ctx context.Context, user models.User, us
 		return "", err
 	}
 
-	hashedAccessToken, err := crypto.Hash(refreshToken)
-	if err != nil {
-		return "", err
-	}
+	hashedRefreshToken := crypto.HashToken(refreshToken)
 
 	token := models.RefreshToken{
-		TokenHash: hashedAccessToken,
+		TokenHash: hashedRefreshToken,
 		UserID:    user.ID,
 		UserAgent: userAgent,
 		ExpiresAt: time.Now().Add(s.refreshTokenTTL).UTC(),

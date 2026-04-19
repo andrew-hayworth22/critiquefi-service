@@ -188,7 +188,7 @@ func TestService_Login(t *testing.T) {
 	t.Run("login", func(t *testing.T) {
 		t.Parallel()
 
-		hashedPassword, err := crypto.Hash("password")
+		hashedPassword, err := crypto.HashPassword("password")
 		if err != nil {
 			t.Fatal(err)
 		}

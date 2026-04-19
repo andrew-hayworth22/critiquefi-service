@@ -92,7 +92,6 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.Is(err, ErrInvalidCredentials):
-
 			httputil.WriteUnauthorized(w)
 			return
 		default:

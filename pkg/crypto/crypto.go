@@ -3,13 +3,15 @@ package crypto
 
 import (
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 
 	"golang.org/x/crypto/bcrypt"
 )
 
-// Hash hashes plaintext.
-func Hash(plaintext string) (string, error) {
+// HashPassword hashes a plaintext password.
+func HashPassword(plaintext string) (string, error) {
 	b, err := bcrypt.GenerateFromPassword([]byte(plaintext), bcrypt.DefaultCost)
 	if err != nil {
 		return "", err
@@ -17,7 +19,13 @@ func Hash(plaintext string) (string, error) {
 	return string(b), nil
 }
 
-// CompareHash hashes and compares plaintext to a hash
+// HashToken hashes a plaintext token.
+func HashToken(plaintext string) string {
+	h := sha256.Sum256([]byte(plaintext))
+	return hex.EncodeToString(h[:])
+}
+
+// CompareHash compares a plaintext password with a hash.
 func CompareHash(hash, plaintext string) error {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(plaintext))
 }
