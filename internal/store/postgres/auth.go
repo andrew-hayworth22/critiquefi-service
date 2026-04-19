@@ -36,12 +36,13 @@ type userRow struct {
 
 func (usr userRow) toModel() models.User {
 	return models.User{
-		ID:          usr.ID,
-		Email:       usr.Email,
-		DisplayName: usr.DisplayName,
-		Name:        usr.Name,
-		IsAdmin:     usr.IsAdmin,
-		IsActive:    usr.IsActive,
+		ID:           usr.ID,
+		Email:        usr.Email,
+		DisplayName:  usr.DisplayName,
+		Name:         usr.Name,
+		IsAdmin:      usr.IsAdmin,
+		PasswordHash: usr.PasswordHash,
+		IsActive:     usr.IsActive,
 	}
 }
 
@@ -185,8 +186,8 @@ func (s *AuthStore) GetUserByEmail(ctx context.Context, email string) (models.Us
 	return row.toModel(), nil
 }
 
-// CheckTakenFields checks if the given fields are taken by another user
-func (s *AuthStore) CheckTakenFields(ctx context.Context, request models.NewUserRequest) (models.UserFieldsTaken, error) {
+// CheckTakenUserFields checks if another user takes the given fields
+func (s *AuthStore) CheckTakenUserFields(ctx context.Context, request models.NewUserRequest) (models.UserFieldsTaken, error) {
 	const q = `
 		SELECT
 			EXISTS (SELECT 1 FROM users WHERE email = :email) AS email_taken,
@@ -214,6 +215,20 @@ func (s *AuthStore) CheckTakenFields(ctx context.Context, request models.NewUser
 	return uft.toModel(), nil
 }
 
+// SetUserLastLogin sets the last login time for a user to now
+func (s *AuthStore) SetUserLastLogin(ctx context.Context, id int64) error {
+	const q = `
+		UPDATE users
+		SET last_login = NOW()
+		WHERE id = :id
+	`
+
+	_, err := s.db.NamedExecContext(ctx, q, map[string]any{
+		"id": id,
+	})
+	return mapError(err)
+}
+
 // CreateRefreshToken creates a new refresh token
 func (s *AuthStore) CreateRefreshToken(ctx context.Context, refreshToken models.RefreshToken) error {
 	const q = `
@@ -225,17 +240,13 @@ func (s *AuthStore) CreateRefreshToken(ctx context.Context, refreshToken models.
 		) VALUES (:token_hash, :user_id, :user_agent, :expires_at)
 	`
 
-	rows, err := s.db.NamedQueryContext(ctx, q, map[string]any{
+	_, err := s.db.NamedExecContext(ctx, q, map[string]any{
 		"token_hash": refreshToken.TokenHash,
 		"user_id":    refreshToken.UserID,
 		"user_agent": refreshToken.UserAgent,
 		"expires_at": refreshToken.ExpiresAt,
 	})
-	if err != nil {
-		return mapError(err)
-	}
-	defer closeRows(rows)
-	return nil
+	return mapError(err)
 }
 
 // GetRefreshToken fetches a refresh token by its hash

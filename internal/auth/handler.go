@@ -42,7 +42,7 @@ type LoginRequest struct {
 	Remember bool   `json:"remember"`
 }
 
-type AuthResponse struct {
+type AuthenticationResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
@@ -75,7 +75,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		h.setRefreshTokenCookie(w, refreshToken)
 	}
 
-	httputil.WriteJSON(w, http.StatusCreated, AuthResponse{
+	httputil.WriteJSON(w, http.StatusCreated, AuthenticationResponse{
 		AccessToken: accessToken,
 	})
 }
@@ -106,7 +106,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		h.setRefreshTokenCookie(w, refreshToken)
 	}
 
-	httputil.WriteJSON(w, http.StatusOK, AuthResponse{
+	httputil.WriteJSON(w, http.StatusOK, AuthenticationResponse{
 		AccessToken: accessToken,
 	})
 }
@@ -147,7 +147,7 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 		h.setRefreshTokenCookie(w, refreshToken)
 	}
 
-	httputil.WriteJSON(w, http.StatusOK, AuthResponse{
+	httputil.WriteJSON(w, http.StatusOK, AuthenticationResponse{
 		AccessToken: accessToken,
 	})
 }

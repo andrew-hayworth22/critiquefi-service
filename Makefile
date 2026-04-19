@@ -21,3 +21,16 @@ migrate-down:
 
 migrate-fresh:
 	go run ./cmd/migrate -action=fresh
+
+test-all:
+	go test ./...
+
+test-store:
+	go test ./internal/store/...
+
+test-auth:
+	go test ./internal/auth
+
+profile-coverage:
+	go test ./... -coverprofile=profiles/coverage.out
+	go tool cover -html=profiles/coverage.out

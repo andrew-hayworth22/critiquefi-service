@@ -28,7 +28,7 @@ func main() {
 		log.Fatalf("error loading .env file: %v", err)
 	}
 
-	dbURL := os.Getenv("DB_URL")
+	dbURL := os.Getenv("MIGRATE_DB_URL")
 
 	m, err := migrate.New("file://migrations", dbURL)
 	if err != nil {

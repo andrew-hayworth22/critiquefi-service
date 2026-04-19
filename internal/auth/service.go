@@ -22,10 +22,11 @@ type Store interface {
 	CreateUser(ctx context.Context, user models.NewUser) (id int64, err error)
 	GetUserByID(ctx context.Context, id int64) (models.User, error)
 	GetUserByEmail(ctx context.Context, email string) (user models.User, err error)
-	CheckTakenFields(ctx context.Context, newUserRequest models.NewUserRequest) (fields models.UserFieldsTaken, err error)
+	CheckTakenUserFields(ctx context.Context, newUserRequest models.NewUserRequest) (fields models.UserFieldsTaken, err error)
+	SetUserLastLogin(ctx context.Context, id int64) error
 
 	CreateRefreshToken(ctx context.Context, refreshToken models.RefreshToken) (err error)
-	GetRefreshToken(ctx context.Context, token string) (models.RefreshToken, error)
+	GetRefreshToken(ctx context.Context, tokenHash string) (models.RefreshToken, error)
 	DeleteRefreshToken(ctx context.Context, token string) error
 }
 
@@ -81,7 +82,7 @@ func (s *Service) Register(ctx context.Context, newUserRequest models.NewUserReq
 		return
 	}
 
-	taken, err := s.store.CheckTakenFields(ctx, newUserRequest)
+	taken, err := s.store.CheckTakenUserFields(ctx, newUserRequest)
 	if err != nil {
 		return
 	}
@@ -168,6 +169,12 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent string, 
 	if err != nil {
 		return
 	}
+
+	err = s.store.SetUserLastLogin(ctx, user.ID)
+	if err != nil {
+		return
+	}
+
 	return
 }
 
