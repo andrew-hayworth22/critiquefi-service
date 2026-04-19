@@ -218,7 +218,7 @@ func TestService_Login(t *testing.T) {
 						Name:         "Test User",
 						IsAdmin:      false,
 						PasswordHash: hashedPassword,
-						IsActive:     false,
+						IsActive:     true,
 					}, nil).on(SetUserLastLogin, nil)
 				},
 				expectedErr:          nil,
@@ -239,7 +239,7 @@ func TestService_Login(t *testing.T) {
 						Name:         "Test User",
 						IsAdmin:      false,
 						PasswordHash: hashedPassword,
-						IsActive:     false,
+						IsActive:     true,
 					}, nil).on(SetUserLastLogin, nil).on(CreateRefreshToken, nil)
 				},
 				expectedErr:          nil,
@@ -261,6 +261,27 @@ func TestService_Login(t *testing.T) {
 			},
 			{
 				name:      "error: wrong password",
+				email:     "user@critiquefi.com",
+				password:  "password",
+				userAgent: "test",
+				remember:  true,
+				storeSetup: func(s *mockStore) {
+					s.on(GetUserByEmail, models.User{
+						ID:           1,
+						Email:        "user@critiquefi.com",
+						DisplayName:  "test.user",
+						Name:         "Test User",
+						IsAdmin:      false,
+						PasswordHash: "wrongpassword",
+						IsActive:     true,
+					}, nil)
+				},
+				expectedErr:          auth.ErrInvalidCredentials,
+				accessTokenExpected:  false,
+				refreshTokenExpected: false,
+			},
+			{
+				name:      "error: inactive user",
 				email:     "user@critiquefi.com",
 				password:  "password",
 				userAgent: "test",
@@ -360,6 +381,262 @@ func TestService_Logout(t *testing.T) {
 
 				err := svc.Logout(context.Background(), tc.refreshToken)
 				testutil.CheckErr(err, tc.expectedErr, t)
+			})
+		}
+	})
+}
+
+func TestService_Refresh(t *testing.T) {
+	t.Run("refresh", func(t *testing.T) {
+		cases := []struct {
+			name         string
+			refreshToken string
+			storeSetup   func(s *mockStore)
+			expectedErr  error
+		}{
+			{
+				name:         "success: refreshed",
+				refreshToken: "refresh_token",
+				storeSetup: func(s *mockStore) {
+					s.on(GetRefreshToken, models.RefreshToken{
+						TokenHash: "refresh_token",
+						UserID:    1,
+						ExpiresAt: time.Now().Add(time.Hour),
+						CreatedAt: time.Now(),
+					}, nil).
+						on(DeleteRefreshToken, nil).
+						on(GetUserByID, models.User{
+							ID:           1,
+							Email:        "user@critiquefi.com",
+							DisplayName:  "test.user",
+							Name:         "Test User",
+							IsAdmin:      false,
+							PasswordHash: "password",
+							IsActive:     true,
+						}, nil).
+						on(CreateRefreshToken, nil)
+				},
+				expectedErr: nil,
+			},
+			{
+				name:         "error: invalid refresh token - not found",
+				refreshToken: "refresh_token",
+				storeSetup: func(s *mockStore) {
+					s.on(GetRefreshToken, models.RefreshToken{}, store.ErrNotFound)
+				},
+				expectedErr: auth.ErrInvalidToken,
+			},
+			{
+				name:         "error: invalid refresh token - expired",
+				refreshToken: "refresh_token",
+				storeSetup: func(s *mockStore) {
+					s.on(GetRefreshToken, models.RefreshToken{
+						TokenHash: "refresh_token",
+						UserID:    1,
+						ExpiresAt: time.Now().Add(-time.Hour),
+						CreatedAt: time.Now().Add(-time.Hour),
+					}, nil).
+						on(DeleteRefreshToken, nil)
+				},
+				expectedErr: auth.ErrInvalidToken,
+			},
+			{
+				name:         "error: invalid refresh token - user not found",
+				refreshToken: "refresh_token",
+				storeSetup: func(s *mockStore) {
+					s.on(GetRefreshToken, models.RefreshToken{
+						TokenHash: "refresh_token",
+						UserID:    1,
+						ExpiresAt: time.Now().Add(time.Hour),
+						CreatedAt: time.Now(),
+					}, nil).
+						on(DeleteRefreshToken, nil).
+						on(GetUserByID, models.User{}, store.ErrNotFound)
+				},
+				expectedErr: auth.ErrInvalidToken,
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				s := newMockStore(t)
+				tc.storeSetup(s)
+
+				svc := auth.NewService(auth.ServiceConfig{
+					Store:                  s,
+					AccessTokenKey:         "key",
+					AccessTokenTTL:         time.Hour,
+					RefreshTokenTTL:        time.Hour,
+					RefreshTokenCookieName: "rt",
+				})
+
+				accessToken, newRefreshToken, err := svc.Refresh(context.Background(), tc.refreshToken)
+				testutil.CheckErr(err, tc.expectedErr, t)
+
+				if tc.expectedErr != nil {
+					return
+				}
+
+				if len(accessToken) == 0 {
+					t.Error("expected access token, got nothing")
+				}
+				if len(newRefreshToken) == 0 {
+					t.Error("expected refresh token, got nothing")
+				}
+				if tc.refreshToken == newRefreshToken {
+					t.Error("expected rotated refresh token, got the same one")
+				}
+			})
+		}
+	})
+}
+
+func TestService_ValidateAccessToken(t *testing.T) {
+	t.Run("validate access token", func(t *testing.T) {
+		cases := []struct {
+			name          string
+			generateToken func(s *auth.Service) string
+			expectedErr   error
+			checkClaims   func(claims models.Claims)
+		}{
+			{
+				name: "success - valid user token",
+				generateToken: func(s *auth.Service) string {
+					token, err := s.GenerateAccessToken(models.User{
+						ID:           1,
+						Email:        "user@critiquefi.com",
+						DisplayName:  "test.user",
+						Name:         "Test User",
+						IsAdmin:      false,
+						PasswordHash: "password",
+						IsActive:     true,
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					return token
+				},
+				expectedErr: nil,
+				checkClaims: func(claims models.Claims) {
+					if claims.UserID != int64(1) {
+						t.Errorf("expected user id 1, got %v", claims.UserID)
+					}
+					if claims.IsAdmin {
+						t.Errorf("expected is admin to be false, got %v", claims.IsAdmin)
+					}
+					if claims.Email != "user@critiquefi.com" {
+						t.Errorf("expected email user@critiquefi.com, got %v", claims.Email)
+					}
+				},
+			},
+			{
+				name: "success - valid admin token",
+				generateToken: func(s *auth.Service) string {
+					token, err := s.GenerateAccessToken(models.User{
+						ID:           1,
+						Email:        "user@critiquefi.com",
+						DisplayName:  "test.user",
+						Name:         "Test User",
+						IsAdmin:      true,
+						PasswordHash: "password",
+						IsActive:     true,
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					return token
+				},
+				expectedErr: nil,
+				checkClaims: func(claims models.Claims) {
+					if claims.UserID != int64(1) {
+						t.Errorf("expected user id 1, got %v", claims.UserID)
+					}
+					if !claims.IsAdmin {
+						t.Errorf("expected is admin to be true, got %v", claims.IsAdmin)
+					}
+					if claims.Email != "user@critiquefi.com" {
+						t.Errorf("expected email user@critiquefi.com, got %v", claims.Email)
+					}
+				},
+			},
+			{
+				name: "error - invalid token - empty",
+				generateToken: func(s *auth.Service) string {
+					return ""
+				},
+				expectedErr: auth.ErrInvalidToken,
+			},
+			{
+				name: "error - invalid token - malformed",
+				generateToken: func(s *auth.Service) string {
+					return "WHAT THE!! WHAT IS THIS???"
+				},
+				expectedErr: auth.ErrInvalidToken,
+			},
+			{
+				name: "error - invalid token - wrong key",
+				generateToken: func(s *auth.Service) string {
+					wrongService := auth.NewService(auth.ServiceConfig{
+						AccessTokenKey: "wrongkey",
+						AccessTokenTTL: time.Hour,
+					})
+					token, err := wrongService.GenerateAccessToken(models.User{
+						ID:           1,
+						Email:        "user@critiquefi.com",
+						DisplayName:  "test.user",
+						Name:         "Test User",
+						IsAdmin:      true,
+						PasswordHash: "password",
+						IsActive:     true,
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					return token
+				},
+				expectedErr: auth.ErrInvalidToken,
+			},
+			{
+				name: "error - invalid token - expired",
+				generateToken: func(s *auth.Service) string {
+					expiredService := auth.NewService(auth.ServiceConfig{
+						AccessTokenKey: "key",
+						AccessTokenTTL: -1 * time.Hour,
+					})
+					token, err := expiredService.GenerateAccessToken(models.User{
+						ID:           1,
+						Email:        "user@critiquefi.com",
+						DisplayName:  "test.user",
+						Name:         "Test User",
+						IsAdmin:      false,
+						PasswordHash: "password",
+						IsActive:     true,
+					})
+					if err != nil {
+						t.Fatal(err)
+					}
+					return token
+				},
+				expectedErr: auth.ErrInvalidToken,
+			},
+		}
+
+		for _, tc := range cases {
+			t.Run(tc.name, func(t *testing.T) {
+				t.Parallel()
+				svc := auth.NewService(auth.ServiceConfig{
+					AccessTokenKey: "key",
+					AccessTokenTTL: time.Hour,
+				})
+
+				token := tc.generateToken(svc)
+				claims, err := svc.ValidateAccessToken(token)
+				testutil.CheckErr(err, tc.expectedErr, t)
+				if tc.expectedErr != nil {
+					return
+				}
+				tc.checkClaims(claims)
 			})
 		}
 	})

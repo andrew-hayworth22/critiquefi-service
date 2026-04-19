@@ -146,7 +146,7 @@ func (s *Service) Register(ctx context.Context, newUserRequest models.NewUserReq
 // Login authenticates a user and returns an access token and refresh token
 func (s *Service) Login(ctx context.Context, email, password, userAgent string, remember bool) (accessToken string, refreshToken string, err error) {
 	user, err := s.store.GetUserByEmail(ctx, email)
-	if err != nil {
+	if err != nil || !user.IsActive {
 		err = ErrInvalidCredentials
 		return
 	}
@@ -216,7 +216,7 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (accessToken
 
 	// Fetch the user associated with the refresh token
 	user, err := s.store.GetUserByID(ctx, token.UserID)
-	if err != nil {
+	if err != nil || !user.IsActive {
 		err = ErrInvalidToken
 		return
 	}
