@@ -43,6 +43,10 @@ func main() {
 		ConnMaxLifetime: cfg.DBConnMaxLifetime,
 		ConnMaxIdleTime: cfg.DBConnMaxIdleTime,
 	})
+	if err != nil {
+		logger.Error("failed connecting to database", "error", err)
+		return
+	}
 
 	// Run migrations
 	m, err := migrate.New("file://migrations", cfg.DatabaseURL)
@@ -50,7 +54,8 @@ func main() {
 		log.Fatalf("error connecting to database for migrations: %v", err)
 	}
 	if err := m.Up(); err != nil && !errors.Is(err, migrate.ErrNoChange) {
-		log.Fatalf("error running migrations: %v", err)
+		logger.Error("failed running migrations", "error", err)
+		return
 	}
 
 	// Build storage packages
