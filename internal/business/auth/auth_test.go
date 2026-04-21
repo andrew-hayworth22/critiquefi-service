@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/andrew-hayworth22/critiquefi-service/internal/auth"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/business/auth"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/testutil"
@@ -37,9 +37,9 @@ func TestService_Register(t *testing.T) {
 				userAgent: "test",
 				remember:  false,
 				storeSetup: func(s *mockStore) {
-					s.on(CheckTakenUserFields, models.UserFieldsTaken{}, nil).
-						on(CreateUser, int64(1), nil).
-						on(GetUserByID, models.User{
+					s.On(CheckTakenUserFields, models.UserFieldsTaken{}, nil).
+						On(CreateUser, int64(1), nil).
+						On(GetUserByID, models.User{
 							ID:           1,
 							Email:        "user@critiquefi.com",
 							DisplayName:  "user.name",
@@ -65,9 +65,9 @@ func TestService_Register(t *testing.T) {
 				userAgent: "test",
 				remember:  true,
 				storeSetup: func(s *mockStore) {
-					s.on(CheckTakenUserFields, models.UserFieldsTaken{}, nil).
-						on(CreateUser, int64(1), nil).
-						on(GetUserByID, models.User{
+					s.On(CheckTakenUserFields, models.UserFieldsTaken{}, nil).
+						On(CreateUser, int64(1), nil).
+						On(GetUserByID, models.User{
 							ID:           1,
 							Email:        "user@critiquefi.com",
 							DisplayName:  "user.name",
@@ -76,7 +76,7 @@ func TestService_Register(t *testing.T) {
 							PasswordHash: "password",
 							IsActive:     true,
 						}, nil).
-						on(CreateRefreshToken, nil)
+						On(CreateRefreshToken, nil)
 				},
 				expectedErr:          nil,
 				accessTokenExpected:  true,
@@ -116,7 +116,7 @@ func TestService_Register(t *testing.T) {
 				userAgent: "test",
 				remember:  true,
 				storeSetup: func(s *mockStore) {
-					s.on(CheckTakenUserFields, models.UserFieldsTaken{
+					s.On(CheckTakenUserFields, models.UserFieldsTaken{
 						DisplayNameTaken: true,
 						EmailTaken:       true,
 					}, nil)
@@ -140,8 +140,8 @@ func TestService_Register(t *testing.T) {
 				userAgent: "test",
 				remember:  true,
 				storeSetup: func(s *mockStore) {
-					s.on(CheckTakenUserFields, models.UserFieldsTaken{}, nil).
-						on(CreateUser, int64(0), store.ErrDuplicate)
+					s.On(CheckTakenUserFields, models.UserFieldsTaken{}, nil).
+						On(CreateUser, int64(0), store.ErrDuplicate)
 				},
 				expectedErr:          auth.ErrDuplicate,
 				accessTokenExpected:  false,
@@ -155,13 +155,11 @@ func TestService_Register(t *testing.T) {
 				s := newMockStore(t)
 				tc.storeSetup(s)
 
-				svc := auth.NewService(auth.ServiceConfig{
-					Store:                    s,
-					AccessTokenKey:           "key",
-					AccessTokenTTL:           time.Hour,
-					RefreshTokenTTL:          time.Hour,
-					RefreshTokenCookieName:   "rt",
-					RefreshTokenCookieDomain: "critiquefi.com",
+				svc := auth.New(auth.BusConfig{
+					Store:           s,
+					AccessTokenKey:  "key",
+					AccessTokenTTL:  time.Hour,
+					RefreshTokenTTL: time.Hour,
 				})
 
 				accessToken, refreshToken, err := svc.Register(context.Background(), tc.request, tc.userAgent, tc.remember)
@@ -211,7 +209,7 @@ func TestService_Login(t *testing.T) {
 				userAgent: "test",
 				remember:  false,
 				storeSetup: func(s *mockStore) {
-					s.on(GetUserByEmail, models.User{
+					s.On(GetUserByEmail, models.User{
 						ID:           1,
 						Email:        "user@critiquefi.com",
 						DisplayName:  "test.user",
@@ -219,7 +217,7 @@ func TestService_Login(t *testing.T) {
 						IsAdmin:      false,
 						PasswordHash: hashedPassword,
 						IsActive:     true,
-					}, nil).on(SetUserLastLogin, nil)
+					}, nil).On(SetUserLastLogin, nil)
 				},
 				expectedErr:          nil,
 				accessTokenExpected:  true,
@@ -232,7 +230,7 @@ func TestService_Login(t *testing.T) {
 				userAgent: "test",
 				remember:  true,
 				storeSetup: func(s *mockStore) {
-					s.on(GetUserByEmail, models.User{
+					s.On(GetUserByEmail, models.User{
 						ID:           1,
 						Email:        "user@critiquefi.com",
 						DisplayName:  "test.user",
@@ -240,7 +238,7 @@ func TestService_Login(t *testing.T) {
 						IsAdmin:      false,
 						PasswordHash: hashedPassword,
 						IsActive:     true,
-					}, nil).on(SetUserLastLogin, nil).on(CreateRefreshToken, nil)
+					}, nil).On(SetUserLastLogin, nil).On(CreateRefreshToken, nil)
 				},
 				expectedErr:          nil,
 				accessTokenExpected:  true,
@@ -253,7 +251,7 @@ func TestService_Login(t *testing.T) {
 				userAgent: "test",
 				remember:  false,
 				storeSetup: func(s *mockStore) {
-					s.on(GetUserByEmail, models.User{}, store.ErrNotFound)
+					s.On(GetUserByEmail, models.User{}, store.ErrNotFound)
 				},
 				expectedErr:          auth.ErrInvalidCredentials,
 				accessTokenExpected:  false,
@@ -266,7 +264,7 @@ func TestService_Login(t *testing.T) {
 				userAgent: "test",
 				remember:  true,
 				storeSetup: func(s *mockStore) {
-					s.on(GetUserByEmail, models.User{
+					s.On(GetUserByEmail, models.User{
 						ID:           1,
 						Email:        "user@critiquefi.com",
 						DisplayName:  "test.user",
@@ -287,7 +285,7 @@ func TestService_Login(t *testing.T) {
 				userAgent: "test",
 				remember:  true,
 				storeSetup: func(s *mockStore) {
-					s.on(GetUserByEmail, models.User{
+					s.On(GetUserByEmail, models.User{
 						ID:           1,
 						Email:        "user@critiquefi.com",
 						DisplayName:  "test.user",
@@ -309,13 +307,11 @@ func TestService_Login(t *testing.T) {
 				s := newMockStore(t)
 				tc.storeSetup(s)
 
-				svc := auth.NewService(auth.ServiceConfig{
-					Store:                    s,
-					AccessTokenKey:           "key",
-					AccessTokenTTL:           time.Hour,
-					RefreshTokenTTL:          time.Hour,
-					RefreshTokenCookieName:   "rt",
-					RefreshTokenCookieDomain: "critiquefi.com",
+				svc := auth.New(auth.BusConfig{
+					Store:           s,
+					AccessTokenKey:  "key",
+					AccessTokenTTL:  time.Hour,
+					RefreshTokenTTL: time.Hour,
 				})
 
 				accessToken, refreshToken, err := svc.Login(context.Background(), tc.email, tc.password, tc.userAgent, tc.remember)
@@ -351,7 +347,7 @@ func TestService_Logout(t *testing.T) {
 				name:         "success: logged out",
 				refreshToken: "test-refresh-token",
 				storeSetup: func(s *mockStore) {
-					s.on(DeleteRefreshToken, nil)
+					s.On(DeleteRefreshToken, nil)
 				},
 				expectedErr: nil,
 			},
@@ -359,7 +355,7 @@ func TestService_Logout(t *testing.T) {
 				name:         "success: no error if token not found",
 				refreshToken: "test-refresh-token",
 				storeSetup: func(s *mockStore) {
-					s.on(DeleteRefreshToken, store.ErrNotFound)
+					s.On(DeleteRefreshToken, store.ErrNotFound)
 				},
 				expectedErr: nil,
 			},
@@ -371,12 +367,11 @@ func TestService_Logout(t *testing.T) {
 				s := newMockStore(t)
 				tc.storeSetup(s)
 
-				svc := auth.NewService(auth.ServiceConfig{
-					Store:                  s,
-					AccessTokenKey:         "key",
-					AccessTokenTTL:         time.Hour,
-					RefreshTokenTTL:        time.Hour,
-					RefreshTokenCookieName: "rt",
+				svc := auth.New(auth.BusConfig{
+					Store:           s,
+					AccessTokenKey:  "key",
+					AccessTokenTTL:  time.Hour,
+					RefreshTokenTTL: time.Hour,
 				})
 
 				err := svc.Logout(context.Background(), tc.refreshToken)
@@ -398,14 +393,14 @@ func TestService_Refresh(t *testing.T) {
 				name:         "success: refreshed",
 				refreshToken: "refresh_token",
 				storeSetup: func(s *mockStore) {
-					s.on(GetRefreshToken, models.RefreshToken{
+					s.On(GetRefreshToken, models.RefreshToken{
 						TokenHash: "refresh_token",
 						UserID:    1,
 						ExpiresAt: time.Now().Add(time.Hour),
 						CreatedAt: time.Now(),
 					}, nil).
-						on(DeleteRefreshToken, nil).
-						on(GetUserByID, models.User{
+						On(DeleteRefreshToken, nil).
+						On(GetUserByID, models.User{
 							ID:           1,
 							Email:        "user@critiquefi.com",
 							DisplayName:  "test.user",
@@ -414,7 +409,7 @@ func TestService_Refresh(t *testing.T) {
 							PasswordHash: "password",
 							IsActive:     true,
 						}, nil).
-						on(CreateRefreshToken, nil)
+						On(CreateRefreshToken, nil)
 				},
 				expectedErr: nil,
 			},
@@ -422,7 +417,7 @@ func TestService_Refresh(t *testing.T) {
 				name:         "error: invalid refresh token - not found",
 				refreshToken: "refresh_token",
 				storeSetup: func(s *mockStore) {
-					s.on(GetRefreshToken, models.RefreshToken{}, store.ErrNotFound)
+					s.On(GetRefreshToken, models.RefreshToken{}, store.ErrNotFound)
 				},
 				expectedErr: auth.ErrInvalidToken,
 			},
@@ -430,13 +425,13 @@ func TestService_Refresh(t *testing.T) {
 				name:         "error: invalid refresh token - expired",
 				refreshToken: "refresh_token",
 				storeSetup: func(s *mockStore) {
-					s.on(GetRefreshToken, models.RefreshToken{
+					s.On(GetRefreshToken, models.RefreshToken{
 						TokenHash: "refresh_token",
 						UserID:    1,
 						ExpiresAt: time.Now().Add(-time.Hour),
 						CreatedAt: time.Now().Add(-time.Hour),
 					}, nil).
-						on(DeleteRefreshToken, nil)
+						On(DeleteRefreshToken, nil)
 				},
 				expectedErr: auth.ErrInvalidToken,
 			},
@@ -444,14 +439,14 @@ func TestService_Refresh(t *testing.T) {
 				name:         "error: invalid refresh token - user not found",
 				refreshToken: "refresh_token",
 				storeSetup: func(s *mockStore) {
-					s.on(GetRefreshToken, models.RefreshToken{
+					s.On(GetRefreshToken, models.RefreshToken{
 						TokenHash: "refresh_token",
 						UserID:    1,
 						ExpiresAt: time.Now().Add(time.Hour),
 						CreatedAt: time.Now(),
 					}, nil).
-						on(DeleteRefreshToken, nil).
-						on(GetUserByID, models.User{}, store.ErrNotFound)
+						On(DeleteRefreshToken, nil).
+						On(GetUserByID, models.User{}, store.ErrNotFound)
 				},
 				expectedErr: auth.ErrInvalidToken,
 			},
@@ -463,12 +458,11 @@ func TestService_Refresh(t *testing.T) {
 				s := newMockStore(t)
 				tc.storeSetup(s)
 
-				svc := auth.NewService(auth.ServiceConfig{
-					Store:                  s,
-					AccessTokenKey:         "key",
-					AccessTokenTTL:         time.Hour,
-					RefreshTokenTTL:        time.Hour,
-					RefreshTokenCookieName: "rt",
+				svc := auth.New(auth.BusConfig{
+					Store:           s,
+					AccessTokenKey:  "key",
+					AccessTokenTTL:  time.Hour,
+					RefreshTokenTTL: time.Hour,
 				})
 
 				accessToken, newRefreshToken, err := svc.Refresh(context.Background(), tc.refreshToken)
@@ -496,13 +490,13 @@ func TestService_ValidateAccessToken(t *testing.T) {
 	t.Run("validate access token", func(t *testing.T) {
 		cases := []struct {
 			name          string
-			generateToken func(s *auth.Service) string
+			generateToken func(s *auth.Bus) string
 			expectedErr   error
 			checkClaims   func(claims models.Claims)
 		}{
 			{
 				name: "success - valid user token",
-				generateToken: func(s *auth.Service) string {
+				generateToken: func(s *auth.Bus) string {
 					token, err := s.GenerateAccessToken(models.User{
 						ID:           1,
 						Email:        "user@critiquefi.com",
@@ -532,7 +526,7 @@ func TestService_ValidateAccessToken(t *testing.T) {
 			},
 			{
 				name: "success - valid admin token",
-				generateToken: func(s *auth.Service) string {
+				generateToken: func(s *auth.Bus) string {
 					token, err := s.GenerateAccessToken(models.User{
 						ID:           1,
 						Email:        "user@critiquefi.com",
@@ -562,22 +556,22 @@ func TestService_ValidateAccessToken(t *testing.T) {
 			},
 			{
 				name: "error - invalid token - empty",
-				generateToken: func(s *auth.Service) string {
+				generateToken: func(s *auth.Bus) string {
 					return ""
 				},
 				expectedErr: auth.ErrInvalidToken,
 			},
 			{
 				name: "error - invalid token - malformed",
-				generateToken: func(s *auth.Service) string {
+				generateToken: func(s *auth.Bus) string {
 					return "WHAT THE!! WHAT IS THIS???"
 				},
 				expectedErr: auth.ErrInvalidToken,
 			},
 			{
 				name: "error - invalid token - wrong key",
-				generateToken: func(s *auth.Service) string {
-					wrongService := auth.NewService(auth.ServiceConfig{
+				generateToken: func(s *auth.Bus) string {
+					wrongService := auth.New(auth.BusConfig{
 						AccessTokenKey: "wrongkey",
 						AccessTokenTTL: time.Hour,
 					})
@@ -599,8 +593,8 @@ func TestService_ValidateAccessToken(t *testing.T) {
 			},
 			{
 				name: "error - invalid token - expired",
-				generateToken: func(s *auth.Service) string {
-					expiredService := auth.NewService(auth.ServiceConfig{
+				generateToken: func(s *auth.Bus) string {
+					expiredService := auth.New(auth.BusConfig{
 						AccessTokenKey: "key",
 						AccessTokenTTL: -1 * time.Hour,
 					})
@@ -625,7 +619,7 @@ func TestService_ValidateAccessToken(t *testing.T) {
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
 				t.Parallel()
-				svc := auth.NewService(auth.ServiceConfig{
+				svc := auth.New(auth.BusConfig{
 					AccessTokenKey: "key",
 					AccessTokenTTL: time.Hour,
 				})

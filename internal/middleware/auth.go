@@ -4,16 +4,18 @@ import (
 	"net/http"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/appcontext"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/auth"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/business/auth"
 	"github.com/andrew-hayworth22/critiquefi-service/pkg/httputil"
 )
 
+// AuthMiddleware provides middleware for authenticating/authorizing requests
 type AuthMiddleware struct {
-	s *auth.Service
+	bus *auth.Bus
 }
 
-func NewAuthMiddleware(s *auth.Service) *AuthMiddleware {
-	return &AuthMiddleware{s: s}
+// NewAuthMiddleware creates a new AuthMiddleware
+func NewAuthMiddleware(s *auth.Bus) *AuthMiddleware {
+	return &AuthMiddleware{bus: s}
 }
 
 // Authenticate optionally authenticates the request and stores claims in the context
@@ -25,7 +27,7 @@ func (a *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 			return
 		}
 
-		claims, err := a.s.ValidateAccessToken(token)
+		claims, err := a.bus.ValidateAccessToken(token)
 		if err != nil {
 			next.ServeHTTP(w, r)
 			return

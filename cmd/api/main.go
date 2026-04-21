@@ -9,12 +9,14 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/andrew-hayworth22/critiquefi-service/internal/auth"
+	authBus "github.com/andrew-hayworth22/critiquefi-service/internal/business/auth"
+	sysBus "github.com/andrew-hayworth22/critiquefi-service/internal/business/sys"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/config"
+	authHttp "github.com/andrew-hayworth22/critiquefi-service/internal/http/auth"
+	sysHttp "github.com/andrew-hayworth22/critiquefi-service/internal/http/sys"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/middleware"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/server"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/sys"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -55,23 +57,21 @@ func main() {
 	sysStore := postgres.NewSysStore(db)
 	authStore := postgres.NewAuthStore(db)
 
-	// Build service packages
-	sysService := sys.NewService(sysStore)
-	authService := auth.NewService(auth.ServiceConfig{
-		Store:                    authStore,
-		AccessTokenKey:           cfg.JWTSecret,
-		AccessTokenTTL:           cfg.AccessTokenTTL,
-		RefreshTokenTTL:          cfg.RefreshTokenTTL,
-		RefreshTokenCookieName:   cfg.RefreshTokenCookieName,
-		RefreshTokenCookieDomain: cfg.RefreshTokenCookieDomain,
+	// Build business logic packages
+	sysB := sysBus.New(sysStore)
+	authB := authBus.New(authBus.BusConfig{
+		Store:           authStore,
+		AccessTokenKey:  cfg.JWTSecret,
+		AccessTokenTTL:  cfg.AccessTokenTTL,
+		RefreshTokenTTL: cfg.RefreshTokenTTL,
 	})
 
 	// Build handler packages
-	sysHandler := sys.NewHandler(sysService)
-	authHandler := auth.NewHandler(authService)
+	sysHandler := sysHttp.NewHandler(sysB)
+	authHandler := authHttp.New(authB, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
 
 	// Build middleware packages
-	authMiddleware := middleware.NewAuthMiddleware(authService)
+	authMiddleware := middleware.NewAuthMiddleware(authB)
 
 	// Build router
 	dependencies := server.Dependencies{

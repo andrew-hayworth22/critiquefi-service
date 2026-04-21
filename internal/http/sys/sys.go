@@ -1,20 +1,24 @@
+// Package sys contains HTTP endpoints related to system checks
 package sys
 
 import (
 	"net/http"
 
+	sysBus "github.com/andrew-hayworth22/critiquefi-service/internal/business/sys"
 	"github.com/andrew-hayworth22/critiquefi-service/pkg/httputil"
 )
 
 // Handler exposes HTTP endpoints related to system checks
 type Handler struct {
-	service *Service
+	service *sysBus.Bus
 }
 
-func NewHandler(service *Service) *Handler {
+// NewHandler creates a new system HTTP handler
+func NewHandler(service *sysBus.Bus) *Handler {
 	return &Handler{service: service}
 }
 
+// SystemCheckResponse represents the response of a system check
 type SystemCheckResponse struct {
 	Status string `json:"status"`
 }

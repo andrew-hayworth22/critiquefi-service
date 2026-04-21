@@ -1,3 +1,4 @@
+// Package auth provides auth-related HTTP handlers.
 package auth
 
 import (
@@ -5,18 +6,28 @@ import (
 	"net/http"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/appcontext"
+	authBus "github.com/andrew-hayworth22/critiquefi-service/internal/business/auth"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
 	"github.com/andrew-hayworth22/critiquefi-service/pkg/httputil"
 )
 
+// Handler exposes HTTP endpoints related to authentication
 type Handler struct {
-	service *Service
+	bus                      *authBus.Bus
+	refreshTokenCookieName   string
+	refreshTokenCookieDomain string
 }
 
-func NewHandler(service *Service) *Handler {
-	return &Handler{service: service}
+// New creates a new auth HTTP handler
+func New(bus *authBus.Bus, refreshTokenCookieName, refreshTokenCookieDomain string) *Handler {
+	return &Handler{
+		bus:                      bus,
+		refreshTokenCookieName:   refreshTokenCookieName,
+		refreshTokenCookieDomain: refreshTokenCookieDomain,
+	}
 }
 
+// RegisterRequest represents a request to register a new user
 type RegisterRequest struct {
 	Email           string `json:"email"`
 	DisplayName     string `json:"display_name"`
@@ -26,6 +37,7 @@ type RegisterRequest struct {
 	Remember        bool   `json:"remember"`
 }
 
+// ToModel converts a RegisterRequest to a NewUserRequest
 func (r *RegisterRequest) ToModel() models.NewUserRequest {
 	return models.NewUserRequest{
 		Email:           r.Email,
@@ -36,16 +48,19 @@ func (r *RegisterRequest) ToModel() models.NewUserRequest {
 	}
 }
 
+// LoginRequest represents a request to login a user
 type LoginRequest struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Remember bool   `json:"remember"`
 }
 
+// AuthenticationResponse represents a response to an authentication request
 type AuthenticationResponse struct {
 	AccessToken string `json:"access_token"`
 }
 
+// Register handles a request to register a new user
 func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	logger := appcontext.GetLogger(r.Context())
 
@@ -54,14 +69,14 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, refreshToken, err := h.service.Register(r.Context(), req.ToModel(), r.UserAgent(), req.Remember)
+	accessToken, refreshToken, err := h.bus.Register(r.Context(), req.ToModel(), r.UserAgent(), req.Remember)
 	if err != nil {
 		switch {
 		case errors.As(err, &models.ValidationErrors{}):
 
 			httputil.WriteUnprocessable(w, err)
 			return
-		case errors.Is(err, ErrDuplicate):
+		case errors.Is(err, authBus.ErrDuplicate):
 			httputil.WriteConflict(w)
 			return
 		default:
@@ -80,6 +95,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Login handles a request to login a user
 func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	logger := appcontext.GetLogger(r.Context())
 
@@ -88,10 +104,10 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	accessToken, refreshToken, err := h.service.Login(r.Context(), req.Email, req.Password, r.UserAgent(), req.Remember)
+	accessToken, refreshToken, err := h.bus.Login(r.Context(), req.Email, req.Password, r.UserAgent(), req.Remember)
 	if err != nil {
 		switch {
-		case errors.Is(err, ErrInvalidCredentials):
+		case errors.Is(err, authBus.ErrInvalidCredentials):
 			httputil.WriteUnauthorized(w)
 			return
 		default:
@@ -110,16 +126,17 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// Logout handles a request to logout a user
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	logger := appcontext.GetLogger(r.Context())
 
-	cookie, err := r.Cookie(h.service.refreshTokenCookieName)
+	cookie, err := r.Cookie(h.refreshTokenCookieName)
 	if err != nil {
 		httputil.WriteUnauthorized(w)
 		return
 	}
 
-	if err := h.service.Logout(r.Context(), cookie.Value); err != nil {
+	if err := h.bus.Logout(r.Context(), cookie.Value); err != nil {
 		logger.Error("logout failed", "error", err)
 		httputil.WriteInternalError(w)
 		return
@@ -129,14 +146,15 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteNoContent(w)
 }
 
+// Refresh handles a request to refresh an access token
 func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie(h.service.refreshTokenCookieName)
+	cookie, err := r.Cookie(h.refreshTokenCookieName)
 	if err != nil {
 		httputil.WriteUnauthorized(w)
 		return
 	}
 
-	accessToken, refreshToken, err := h.service.Refresh(r.Context(), cookie.Value)
+	accessToken, refreshToken, err := h.bus.Refresh(r.Context(), cookie.Value)
 	if err != nil {
 		httputil.WriteUnauthorized(w)
 		return
@@ -151,21 +169,23 @@ func (h *Handler) Refresh(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// setRefreshTokenCookie sets the refresh token cookie
 func (h *Handler) setRefreshTokenCookie(w http.ResponseWriter, token string) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     h.service.refreshTokenCookieName,
+		Name:     h.refreshTokenCookieName,
 		Value:    token,
-		Domain:   h.service.refreshTokenCookieDomain,
+		Domain:   h.refreshTokenCookieDomain,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,
 	})
 }
 
+// clearRefreshTokenCookie clears the refresh token cookie
 func (h *Handler) clearRefreshTokenCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
-		Name:     h.service.refreshTokenCookieName,
-		Domain:   h.service.refreshTokenCookieDomain,
+		Name:     h.refreshTokenCookieName,
+		Domain:   h.refreshTokenCookieDomain,
 		HttpOnly: true,
 		Secure:   true,
 		SameSite: http.SameSiteStrictMode,

@@ -1,3 +1,4 @@
+// Package auth provides auth-related business logic.
 package auth
 
 import (
@@ -18,6 +19,7 @@ var (
 	ErrDuplicate          = errors.New("duplicate record")
 )
 
+// Store defines the logic needed for auth storage
 type Store interface {
 	CreateUser(ctx context.Context, user models.NewUser) (id int64, err error)
 	GetUserByID(ctx context.Context, id int64) (models.User, error)
@@ -28,35 +30,6 @@ type Store interface {
 	CreateRefreshToken(ctx context.Context, refreshToken models.RefreshToken) (err error)
 	GetRefreshToken(ctx context.Context, tokenHash string) (models.RefreshToken, error)
 	DeleteRefreshToken(ctx context.Context, token string) error
-}
-
-type Service struct {
-	store                    Store
-	accessTokenKey           []byte
-	accessTokenTTL           time.Duration
-	refreshTokenTTL          time.Duration
-	refreshTokenCookieName   string
-	refreshTokenCookieDomain string
-}
-
-type ServiceConfig struct {
-	Store                    Store
-	AccessTokenKey           string
-	AccessTokenTTL           time.Duration
-	RefreshTokenTTL          time.Duration
-	RefreshTokenCookieName   string
-	RefreshTokenCookieDomain string
-}
-
-func NewService(cfg ServiceConfig) *Service {
-	return &Service{
-		store:                    cfg.Store,
-		accessTokenKey:           []byte(cfg.AccessTokenKey),
-		accessTokenTTL:           cfg.AccessTokenTTL,
-		refreshTokenTTL:          cfg.RefreshTokenTTL,
-		refreshTokenCookieName:   cfg.RefreshTokenCookieName,
-		refreshTokenCookieDomain: cfg.RefreshTokenCookieDomain,
-	}
 }
 
 // jwtClaims defines the claims to be stored in the JWT
@@ -75,14 +48,40 @@ func (c jwtClaims) toModel() models.Claims {
 	}
 }
 
+// Bus defines the auth business logic
+type Bus struct {
+	store           Store
+	accessTokenKey  []byte
+	accessTokenTTL  time.Duration
+	refreshTokenTTL time.Duration
+}
+
+// BusConfig defines the auth business logic configuration
+type BusConfig struct {
+	Store           Store
+	AccessTokenKey  string
+	AccessTokenTTL  time.Duration
+	RefreshTokenTTL time.Duration
+}
+
+// New creates a new auth business logic package
+func New(cfg BusConfig) *Bus {
+	return &Bus{
+		store:           cfg.Store,
+		accessTokenKey:  []byte(cfg.AccessTokenKey),
+		accessTokenTTL:  cfg.AccessTokenTTL,
+		refreshTokenTTL: cfg.RefreshTokenTTL,
+	}
+}
+
 // Register creates a user and starts an authenticated session
-func (s *Service) Register(ctx context.Context, newUserRequest models.NewUserRequest, userAgent string, remember bool) (accessToken string, refreshToken string, err error) {
+func (b *Bus) Register(ctx context.Context, newUserRequest models.NewUserRequest, userAgent string, remember bool) (accessToken string, refreshToken string, err error) {
 	// Validate new user
 	if err = newUserRequest.Validate(); err != nil {
 		return
 	}
 
-	taken, err := s.store.CheckTakenUserFields(ctx, newUserRequest)
+	taken, err := b.store.CheckTakenUserFields(ctx, newUserRequest)
 	if err != nil {
 		return
 	}
@@ -112,7 +111,7 @@ func (s *Service) Register(ctx context.Context, newUserRequest models.NewUserReq
 	}
 
 	// Create user
-	id, err := s.store.CreateUser(ctx, newUser)
+	id, err := b.store.CreateUser(ctx, newUser)
 	if err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
 			err = ErrDuplicate
@@ -122,12 +121,12 @@ func (s *Service) Register(ctx context.Context, newUserRequest models.NewUserReq
 	}
 
 	// Fetch user and generate tokens
-	user, err := s.store.GetUserByID(ctx, id)
+	user, err := b.store.GetUserByID(ctx, id)
 	if err != nil {
 		return
 	}
 
-	accessToken, err = s.GenerateAccessToken(user)
+	accessToken, err = b.GenerateAccessToken(user)
 	if err != nil {
 		return
 	}
@@ -136,7 +135,7 @@ func (s *Service) Register(ctx context.Context, newUserRequest models.NewUserReq
 		return
 	}
 
-	refreshToken, err = s.GenerateRefreshToken(ctx, user, userAgent)
+	refreshToken, err = b.GenerateRefreshToken(ctx, user, userAgent)
 	if err != nil {
 		return
 	}
@@ -144,8 +143,8 @@ func (s *Service) Register(ctx context.Context, newUserRequest models.NewUserReq
 }
 
 // Login authenticates a user and returns an access token and refresh token
-func (s *Service) Login(ctx context.Context, email, password, userAgent string, remember bool) (accessToken string, refreshToken string, err error) {
-	user, err := s.store.GetUserByEmail(ctx, email)
+func (b *Bus) Login(ctx context.Context, email, password, userAgent string, remember bool) (accessToken string, refreshToken string, err error) {
+	user, err := b.store.GetUserByEmail(ctx, email)
 	if err != nil || !user.IsActive {
 		err = ErrInvalidCredentials
 		return
@@ -156,12 +155,12 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent string, 
 		return
 	}
 
-	accessToken, err = s.GenerateAccessToken(user)
+	accessToken, err = b.GenerateAccessToken(user)
 	if err != nil {
 		return
 	}
 
-	err = s.store.SetUserLastLogin(ctx, user.ID)
+	err = b.store.SetUserLastLogin(ctx, user.ID)
 	if err != nil {
 		return
 	}
@@ -170,7 +169,7 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent string, 
 		return
 	}
 
-	refreshToken, err = s.GenerateRefreshToken(ctx, user, userAgent)
+	refreshToken, err = b.GenerateRefreshToken(ctx, user, userAgent)
 	if err != nil {
 		return
 	}
@@ -179,10 +178,10 @@ func (s *Service) Login(ctx context.Context, email, password, userAgent string, 
 }
 
 // Logout invalidates a refresh token
-func (s *Service) Logout(ctx context.Context, refreshToken string) error {
+func (b *Bus) Logout(ctx context.Context, refreshToken string) error {
 	refreshToken = crypto.HashToken(refreshToken)
 
-	if err := s.store.DeleteRefreshToken(ctx, refreshToken); err != nil {
+	if err := b.store.DeleteRefreshToken(ctx, refreshToken); err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			return nil
 		}
@@ -192,19 +191,19 @@ func (s *Service) Logout(ctx context.Context, refreshToken string) error {
 }
 
 // Refresh refreshes an access token using a refresh token
-func (s *Service) Refresh(ctx context.Context, refreshToken string) (accessToken, newRefreshToken string, err error) {
+func (b *Bus) Refresh(ctx context.Context, refreshToken string) (accessToken, newRefreshToken string, err error) {
 	// Hash provided refresh token
 	refreshToken = crypto.HashToken(refreshToken)
 
 	// Fetch refresh token
-	token, err := s.store.GetRefreshToken(ctx, refreshToken)
+	token, err := b.store.GetRefreshToken(ctx, refreshToken)
 	if err != nil {
 		err = ErrInvalidToken
 		return "", "", err
 	}
 
 	// Revoke provided refresh token
-	if err := s.store.DeleteRefreshToken(ctx, refreshToken); err != nil {
+	if err := b.store.DeleteRefreshToken(ctx, refreshToken); err != nil {
 		return "", "", err
 	}
 
@@ -215,20 +214,20 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (accessToken
 	}
 
 	// Fetch the user associated with the refresh token
-	user, err := s.store.GetUserByID(ctx, token.UserID)
+	user, err := b.store.GetUserByID(ctx, token.UserID)
 	if err != nil || !user.IsActive {
 		err = ErrInvalidToken
 		return
 	}
 
 	// Generate a new access token
-	accessToken, err = s.GenerateAccessToken(user)
+	accessToken, err = b.GenerateAccessToken(user)
 	if err != nil {
 		return
 	}
 
 	// Rotate refresh tokens
-	newRefreshToken, err = s.GenerateRefreshToken(ctx, user, token.UserAgent)
+	newRefreshToken, err = b.GenerateRefreshToken(ctx, user, token.UserAgent)
 	if err != nil {
 		return
 	}
@@ -236,27 +235,27 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (accessToken
 }
 
 // GenerateAccessToken generates an access token for a user
-func (s *Service) GenerateAccessToken(user models.User) (string, error) {
+func (b *Bus) GenerateAccessToken(user models.User) (string, error) {
 	claims := &jwtClaims{
 		UserID:  user.ID,
 		Email:   user.Email,
 		IsAdmin: user.IsAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(time.Now().UTC()),
-			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(s.accessTokenTTL)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().UTC().Add(b.accessTokenTTL)),
 			Issuer:    "critiquefi",
 			Subject:   fmt.Sprint(user.ID),
 		},
 	}
 
 	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return t.SignedString(s.accessTokenKey)
+	return t.SignedString(b.accessTokenKey)
 }
 
 // ValidateAccessToken parses and validates an access token, then returns the token claims
-func (s *Service) ValidateAccessToken(accessToken string) (models.Claims, error) {
+func (b *Bus) ValidateAccessToken(accessToken string) (models.Claims, error) {
 	t, err := jwt.ParseWithClaims(accessToken, &jwtClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return s.accessTokenKey, nil
+		return b.accessTokenKey, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
 		return models.Claims{}, ErrInvalidToken
@@ -272,7 +271,7 @@ func (s *Service) ValidateAccessToken(accessToken string) (models.Claims, error)
 }
 
 // GenerateRefreshToken generates a refresh token for a user
-func (s *Service) GenerateRefreshToken(ctx context.Context, user models.User, userAgent string) (string, error) {
+func (b *Bus) GenerateRefreshToken(ctx context.Context, user models.User, userAgent string) (string, error) {
 	refreshToken, err := crypto.RandomString(32)
 	if err != nil {
 		return "", err
@@ -284,11 +283,11 @@ func (s *Service) GenerateRefreshToken(ctx context.Context, user models.User, us
 		TokenHash: hashedRefreshToken,
 		UserID:    user.ID,
 		UserAgent: userAgent,
-		ExpiresAt: time.Now().Add(s.refreshTokenTTL).UTC(),
+		ExpiresAt: time.Now().Add(b.refreshTokenTTL).UTC(),
 		CreatedAt: time.Now().UTC(),
 	}
 
-	if s.store.CreateRefreshToken(ctx, token) != nil {
+	if b.store.CreateRefreshToken(ctx, token) != nil {
 		return "", err
 	}
 

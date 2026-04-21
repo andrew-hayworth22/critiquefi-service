@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/andrew-hayworth22/critiquefi-service/internal/auth"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/http/auth"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/http/sys"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/middleware"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/sys"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 )
