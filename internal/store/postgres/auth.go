@@ -10,12 +10,12 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// AuthStore is the postgres implementation of the auth store
+// AuthStore is the postgres implementation of the authbus store
 type AuthStore struct {
 	db *sqlx.DB
 }
 
-// NewAuthStore creates a new auth store
+// NewAuthStore creates a new authbus store
 func NewAuthStore(db *sqlx.DB) *AuthStore {
 	return &AuthStore{db: db}
 }

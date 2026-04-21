@@ -4,6 +4,7 @@ import (
 	"net/mail"
 )
 
+// User is a user of the application
 type User struct {
 	ID           int64
 	Email        string
@@ -37,6 +38,7 @@ type UserFieldsTaken struct {
 	DisplayNameTaken bool
 }
 
+// Validate validates a new user request
 func (u NewUserRequest) Validate() error {
 	ve := ValidationErrors{}
 

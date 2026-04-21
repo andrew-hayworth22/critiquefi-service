@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -18,5 +19,8 @@ func NewSysStore(db *sqlx.DB) *SysStore {
 
 // Ping tests the database connection
 func (s *SysStore) Ping(ctx context.Context) error {
-	return s.db.PingContext(ctx)
+	if err := s.db.PingContext(ctx); err != nil {
+		return store.ErrInternal
+	}
+	return nil
 }

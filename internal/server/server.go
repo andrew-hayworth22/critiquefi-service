@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/andrew-hayworth22/critiquefi-service/internal/http/auth"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/http/sys"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/http/authhttp"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/http/syshttp"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/middleware"
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -31,8 +31,8 @@ type Dependencies struct {
 	Logger *slog.Logger
 
 	// Handler packages
-	AuthHandler *auth.Handler
-	SysHandler  *sys.Handler
+	AuthHandler *authhttp.Handler
+	SysHandler  *syshttp.Handler
 
 	// Middleware packages
 	AuthMiddleware *middleware.AuthMiddleware

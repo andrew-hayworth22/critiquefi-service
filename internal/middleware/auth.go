@@ -1,21 +1,27 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/appcontext"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/business/auth"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
 	"github.com/andrew-hayworth22/critiquefi-service/pkg/httputil"
 )
 
+// Bus defines the business logic needed for authbus middleware
+type Bus interface {
+	ValidateAccessToken(accessToken string) (models.Claims, error)
+}
+
 // AuthMiddleware provides middleware for authenticating/authorizing requests
 type AuthMiddleware struct {
-	bus *auth.Bus
+	bus Bus
 }
 
 // NewAuthMiddleware creates a new AuthMiddleware
-func NewAuthMiddleware(s *auth.Bus) *AuthMiddleware {
-	return &AuthMiddleware{bus: s}
+func NewAuthMiddleware(b Bus) *AuthMiddleware {
+	return &AuthMiddleware{bus: b}
 }
 
 // Authenticate optionally authenticates the request and stores claims in the context
@@ -70,12 +76,12 @@ func (a *AuthMiddleware) ForceAdmin(next http.Handler) http.Handler {
 func extractBearerToken(r *http.Request) (string, error) {
 	authHeader := r.Header.Get("Authorization")
 	if authHeader == "" {
-		return "", auth.ErrInvalidToken
+		return "", fmt.Errorf("missing authorization header")
 	}
 
 	const prefix = "Bearer "
 	if len(authHeader) < len(prefix) || authHeader[:len(prefix)] != prefix {
-		return "", auth.ErrInvalidToken
+		return "", fmt.Errorf("invalid authorization header")
 	}
 
 	return authHeader[len(prefix):], nil

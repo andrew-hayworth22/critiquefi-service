@@ -9,11 +9,11 @@ import (
 	"syscall"
 	"time"
 
-	authBus "github.com/andrew-hayworth22/critiquefi-service/internal/business/auth"
-	sysBus "github.com/andrew-hayworth22/critiquefi-service/internal/business/sys"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/business/authbus"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/business/sysbus"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/config"
-	authHttp "github.com/andrew-hayworth22/critiquefi-service/internal/http/auth"
-	sysHttp "github.com/andrew-hayworth22/critiquefi-service/internal/http/sys"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/http/authhttp"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/http/syshttp"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/middleware"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/server"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
@@ -58,8 +58,8 @@ func main() {
 	authStore := postgres.NewAuthStore(db)
 
 	// Build business logic packages
-	sysB := sysBus.New(sysStore)
-	authB := authBus.New(authBus.BusConfig{
+	sysB := sysbus.New(sysStore)
+	authB := authbus.New(authbus.BusConfig{
 		Store:           authStore,
 		AccessTokenKey:  cfg.JWTSecret,
 		AccessTokenTTL:  cfg.AccessTokenTTL,
@@ -67,8 +67,8 @@ func main() {
 	})
 
 	// Build handler packages
-	sysHandler := sysHttp.NewHandler(sysB)
-	authHandler := authHttp.New(authB, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
+	sysHandler := syshttp.New(sysB)
+	authHandler := authhttp.New(authB, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
 
 	// Build middleware packages
 	authMiddleware := middleware.NewAuthMiddleware(authB)

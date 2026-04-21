@@ -2,6 +2,7 @@ package server
 
 import "github.com/go-chi/chi/v5"
 
+// registerRoutes registers all routes for the application
 func registerRoutes(r *chi.Mux, dependencies Dependencies) {
 	r.Group(unauthenticatedRoutes(r, dependencies))
 	r.Group(publicRoutes(r, dependencies))
@@ -17,9 +18,9 @@ func unauthenticatedRoutes(r chi.Router, dependencies Dependencies) func(chi.Rou
 		r.Get("/readiness", dependencies.SysHandler.Readiness)
 
 		// Auth
-		r.Post("/auth/register", dependencies.AuthHandler.Register)
-		r.Post("/auth/login", dependencies.AuthHandler.Login)
-		r.Post("/auth/refresh", dependencies.AuthHandler.Refresh)
+		r.Post("/authbus/register", dependencies.AuthHandler.Register)
+		r.Post("/authbus/login", dependencies.AuthHandler.Login)
+		r.Post("/authbus/refresh", dependencies.AuthHandler.Refresh)
 	}
 }
 
@@ -37,7 +38,7 @@ func protectedRoutes(r chi.Router, dependencies Dependencies) func(chi.Router) {
 		r.Use(dependencies.AuthMiddleware.ForceAuthentication)
 
 		// Auth
-		r.Post("/auth/logout", dependencies.AuthHandler.Logout)
+		r.Post("/authbus/logout", dependencies.AuthHandler.Logout)
 	}
 }
 

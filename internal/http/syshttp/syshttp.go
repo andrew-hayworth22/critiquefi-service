@@ -1,21 +1,26 @@
-// Package sys contains HTTP endpoints related to system checks
-package sys
+// Package syshttp contains HTTP endpoints related to system checks
+package syshttp
 
 import (
+	"context"
 	"net/http"
 
-	sysBus "github.com/andrew-hayworth22/critiquefi-service/internal/business/sys"
 	"github.com/andrew-hayworth22/critiquefi-service/pkg/httputil"
 )
 
-// Handler exposes HTTP endpoints related to system checks
-type Handler struct {
-	service *sysBus.Bus
+// Bus defines the business logic needed for system checks
+type Bus interface {
+	Ping(ctx context.Context) error
 }
 
-// NewHandler creates a new system HTTP handler
-func NewHandler(service *sysBus.Bus) *Handler {
-	return &Handler{service: service}
+// Handler exposes HTTP endpoints related to system checks
+type Handler struct {
+	bus Bus
+}
+
+// New creates a new system HTTP handler
+func New(bus Bus) *Handler {
+	return &Handler{bus: bus}
 }
 
 // SystemCheckResponse represents the response of a system check
@@ -32,8 +37,8 @@ func (h *Handler) Liveness(w http.ResponseWriter, r *http.Request) {
 
 // Readiness checks the readiness of the HTTP server and the database connection
 func (h *Handler) Readiness(w http.ResponseWriter, r *http.Request) {
-	if err := h.service.Ping(r.Context()); err != nil {
-		httputil.WriteInternalError(w)
+	if err := h.bus.Ping(r.Context()); err != nil {
+		httputil.WriteServiceUnavailable(w)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, SystemCheckResponse{

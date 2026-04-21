@@ -1,25 +1,34 @@
-// Package auth provides auth-related HTTP handlers.
-package auth
+// Package authbus provides authbus-related HTTP handlers.
+package authhttp
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/appcontext"
-	authBus "github.com/andrew-hayworth22/critiquefi-service/internal/business/auth"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/business"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
 	"github.com/andrew-hayworth22/critiquefi-service/pkg/httputil"
 )
 
+// Bus defines the business logic needed for authbus handlers
+type Bus interface {
+	Register(ctx context.Context, user models.NewUserRequest, userAgent string, remember bool) (string, string, error)
+	Login(ctx context.Context, email, password string, userAgent string, remember bool) (string, string, error)
+	Logout(ctx context.Context, refreshToken string) error
+	Refresh(ctx context.Context, refreshToken string) (string, string, error)
+}
+
 // Handler exposes HTTP endpoints related to authentication
 type Handler struct {
-	bus                      *authBus.Bus
+	bus                      Bus
 	refreshTokenCookieName   string
 	refreshTokenCookieDomain string
 }
 
-// New creates a new auth HTTP handler
-func New(bus *authBus.Bus, refreshTokenCookieName, refreshTokenCookieDomain string) *Handler {
+// New creates a new authbus HTTP handler
+func New(bus Bus, refreshTokenCookieName, refreshTokenCookieDomain string) *Handler {
 	return &Handler{
 		bus:                      bus,
 		refreshTokenCookieName:   refreshTokenCookieName,
@@ -76,7 +85,7 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 
 			httputil.WriteUnprocessable(w, err)
 			return
-		case errors.Is(err, authBus.ErrDuplicate):
+		case errors.Is(err, business.ErrDuplicate):
 			httputil.WriteConflict(w)
 			return
 		default:
@@ -107,7 +116,7 @@ func (h *Handler) Login(w http.ResponseWriter, r *http.Request) {
 	accessToken, refreshToken, err := h.bus.Login(r.Context(), req.Email, req.Password, r.UserAgent(), req.Remember)
 	if err != nil {
 		switch {
-		case errors.Is(err, authBus.ErrInvalidCredentials):
+		case errors.Is(err, business.ErrInvalidCredentials):
 			httputil.WriteUnauthorized(w)
 			return
 		default:

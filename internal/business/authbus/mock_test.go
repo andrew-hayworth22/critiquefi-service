@@ -1,4 +1,4 @@
-package auth_test
+package authbus_test
 
 import (
 	"context"
@@ -19,7 +19,7 @@ var (
 	DeleteRefreshToken   testutil.Method = "DeleteRefreshToken"
 )
 
-// mockStore is a mock auth store for testing
+// mockStore is a mock authbus store for testing
 type mockStore struct {
 	testutil.Mock
 }

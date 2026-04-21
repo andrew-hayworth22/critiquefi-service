@@ -2,12 +2,14 @@ package models
 
 import "time"
 
+// Claims represent the claims in the application's JWT
 type Claims struct {
 	UserID  int64  `json:"uid"`
 	Email   string `json:"email"`
 	IsAdmin bool   `json:"is_admin"`
 }
 
+// RefreshToken represents a token used to refresh the user's access token
 type RefreshToken struct {
 	TokenHash string
 	UserID    int64

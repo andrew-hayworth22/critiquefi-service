@@ -1,7 +1,11 @@
-// Package sys provides business logic for system-related operations.
-package sys
+// Package sysbus provides business logic for system-related operations.
+package sysbus
 
-import "context"
+import (
+	"context"
+
+	"github.com/andrew-hayworth22/critiquefi-service/internal/business"
+)
 
 // Store defines logic for system-related storage operations.
 type Store interface {
@@ -20,5 +24,8 @@ func New(store Store) *Bus {
 
 // Ping tests the database connection.
 func (b *Bus) Ping(ctx context.Context) error {
-	return b.store.Ping(ctx)
+	if err := b.store.Ping(ctx); err != nil {
+		return business.ErrInternal
+	}
+	return nil
 }

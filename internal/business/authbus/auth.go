@@ -1,5 +1,5 @@
-// Package auth provides auth-related business logic.
-package auth
+// Package authbus provides authbus-related business logic.
+package authbus
 
 import (
 	"context"
@@ -7,19 +7,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/andrew-hayworth22/critiquefi-service/internal/business"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
 	"github.com/andrew-hayworth22/critiquefi-service/pkg/crypto"
 	"github.com/golang-jwt/jwt/v5"
 )
 
-var (
-	ErrInvalidCredentials = errors.New("invalid credentials")
-	ErrInvalidToken       = errors.New("invalid token")
-	ErrDuplicate          = errors.New("duplicate record")
-)
-
-// Store defines the logic needed for auth storage
+// Store defines the logic needed for authbus storage
 type Store interface {
 	CreateUser(ctx context.Context, user models.NewUser) (id int64, err error)
 	GetUserByID(ctx context.Context, id int64) (models.User, error)
@@ -48,7 +43,7 @@ func (c jwtClaims) toModel() models.Claims {
 	}
 }
 
-// Bus defines the auth business logic
+// Bus defines the authbus business logic
 type Bus struct {
 	store           Store
 	accessTokenKey  []byte
@@ -56,7 +51,7 @@ type Bus struct {
 	refreshTokenTTL time.Duration
 }
 
-// BusConfig defines the auth business logic configuration
+// BusConfig defines the authbus business logic configuration
 type BusConfig struct {
 	Store           Store
 	AccessTokenKey  string
@@ -64,7 +59,7 @@ type BusConfig struct {
 	RefreshTokenTTL time.Duration
 }
 
-// New creates a new auth business logic package
+// New creates a new authbus business logic package
 func New(cfg BusConfig) *Bus {
 	return &Bus{
 		store:           cfg.Store,
@@ -114,7 +109,7 @@ func (b *Bus) Register(ctx context.Context, newUserRequest models.NewUserRequest
 	id, err := b.store.CreateUser(ctx, newUser)
 	if err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
-			err = ErrDuplicate
+			err = business.ErrDuplicate
 			return
 		}
 		return
@@ -146,12 +141,12 @@ func (b *Bus) Register(ctx context.Context, newUserRequest models.NewUserRequest
 func (b *Bus) Login(ctx context.Context, email, password, userAgent string, remember bool) (accessToken string, refreshToken string, err error) {
 	user, err := b.store.GetUserByEmail(ctx, email)
 	if err != nil || !user.IsActive {
-		err = ErrInvalidCredentials
+		err = business.ErrInvalidCredentials
 		return
 	}
 
 	if crypto.CompareHash(user.PasswordHash, password) != nil {
-		err = ErrInvalidCredentials
+		err = business.ErrInvalidCredentials
 		return
 	}
 
@@ -198,7 +193,7 @@ func (b *Bus) Refresh(ctx context.Context, refreshToken string) (accessToken, ne
 	// Fetch refresh token
 	token, err := b.store.GetRefreshToken(ctx, refreshToken)
 	if err != nil {
-		err = ErrInvalidToken
+		err = business.ErrInvalidToken
 		return "", "", err
 	}
 
@@ -209,14 +204,14 @@ func (b *Bus) Refresh(ctx context.Context, refreshToken string) (accessToken, ne
 
 	// Check for expired token
 	if time.Now().UTC().After(token.ExpiresAt) {
-		err = ErrInvalidToken
+		err = business.ErrInvalidToken
 		return
 	}
 
 	// Fetch the user associated with the refresh token
 	user, err := b.store.GetUserByID(ctx, token.UserID)
 	if err != nil || !user.IsActive {
-		err = ErrInvalidToken
+		err = business.ErrInvalidToken
 		return
 	}
 
@@ -258,12 +253,12 @@ func (b *Bus) ValidateAccessToken(accessToken string) (models.Claims, error) {
 		return b.accessTokenKey, nil
 	}, jwt.WithValidMethods([]string{jwt.SigningMethodHS256.Alg()}))
 	if err != nil {
-		return models.Claims{}, ErrInvalidToken
+		return models.Claims{}, business.ErrInvalidToken
 	}
 
 	claims, ok := t.Claims.(*jwtClaims)
 	if !ok || !t.Valid {
-		return models.Claims{}, ErrInvalidToken
+		return models.Claims{}, business.ErrInvalidToken
 	}
 
 	claimsModel := claims.toModel()
