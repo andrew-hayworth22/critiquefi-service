@@ -1,4 +1,4 @@
-package postgres_test
+package authpg_test
 
 import (
 	"context"
@@ -7,14 +7,14 @@ import (
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
-	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres/authpg"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/testutil"
 )
 
 func TestAuthStore_CreateUser(t *testing.T) {
 	t.Run("create user", func(t *testing.T) {
-		resetTables(t)
-		s := postgres.NewAuthStore(testDB)
+		testutil.PrepareDB(t, testDB)
+		s := authpg.New(testDB)
 
 		cases := []struct {
 			name        string
@@ -79,8 +79,8 @@ func TestAuthStore_CreateUser(t *testing.T) {
 
 func TestAuthStore_GetUserById(t *testing.T) {
 	t.Run("get user by ID", func(t *testing.T) {
-		resetTables(t)
-		s := postgres.NewAuthStore(testDB)
+		testutil.PrepareDB(t, testDB)
+		s := authpg.New(testDB)
 
 		cases := []struct {
 			name         string
@@ -153,8 +153,8 @@ func TestAuthStore_GetUserById(t *testing.T) {
 
 func TestAuthStore_GetUserByEmail(t *testing.T) {
 	t.Run("get user by email", func(t *testing.T) {
-		resetTables(t)
-		s := postgres.NewAuthStore(testDB)
+		testutil.PrepareDB(t, testDB)
+		s := authpg.New(testDB)
 
 		cases := []struct {
 			name         string
@@ -227,8 +227,8 @@ func TestAuthStore_GetUserByEmail(t *testing.T) {
 
 func TestAuthStore_CheckTakenFields(t *testing.T) {
 	t.Run("check taken fields", func(t *testing.T) {
-		resetTables(t)
-		s := postgres.NewAuthStore(testDB)
+		testutil.PrepareDB(t, testDB)
+		s := authpg.New(testDB)
 
 		cases := []struct {
 			name                    string
@@ -313,8 +313,8 @@ func TestAuthStore_CheckTakenFields(t *testing.T) {
 
 func TestAuthStore_CreateRefreshToken(t *testing.T) {
 	t.Run("create refresh token", func(t *testing.T) {
-		resetTables(t)
-		s := postgres.NewAuthStore(testDB)
+		testutil.PrepareDB(t, testDB)
+		s := authpg.New(testDB)
 
 		cases := []struct {
 			name         string
@@ -367,8 +367,8 @@ func TestAuthStore_CreateRefreshToken(t *testing.T) {
 
 func TestAuthStore_GetRefreshToken(t *testing.T) {
 	t.Run("get refresh token", func(t *testing.T) {
-		resetTables(t)
-		s := postgres.NewAuthStore(testDB)
+		testutil.PrepareDB(t, testDB)
+		s := authpg.New(testDB)
 
 		cases := []struct {
 			name          string
@@ -411,8 +411,8 @@ func TestAuthStore_GetRefreshToken(t *testing.T) {
 
 func TestAuthStore_DeleteRefreshToken(t *testing.T) {
 	t.Run("delete refresh token", func(t *testing.T) {
-		resetTables(t)
-		s := postgres.NewAuthStore(testDB)
+		testutil.PrepareDB(t, testDB)
+		s := authpg.New(testDB)
 
 		cases := []struct {
 			name        string
@@ -447,8 +447,8 @@ func TestAuthStore_DeleteRefreshToken(t *testing.T) {
 
 func TestAuthStore_SetUserLastLogin(t *testing.T) {
 	t.Run("set user last login", func(t *testing.T) {
-		resetTables(t)
-		s := postgres.NewAuthStore(testDB)
+		testutil.PrepareDB(t, testDB)
+		s := authpg.New(testDB)
 
 		cases := []struct {
 			name   string

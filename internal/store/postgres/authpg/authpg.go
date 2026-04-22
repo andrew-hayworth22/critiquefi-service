@@ -1,4 +1,4 @@
-package postgres
+package authpg
 
 import (
 	"context"
@@ -7,17 +7,18 @@ import (
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/models"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
 	"github.com/jmoiron/sqlx"
 )
 
-// AuthStore is the postgres implementation of the authbus store
-type AuthStore struct {
+// AuthPg is the postgres implementation of the auth store
+type AuthPg struct {
 	db *sqlx.DB
 }
 
-// NewAuthStore creates a new authbus store
-func NewAuthStore(db *sqlx.DB) *AuthStore {
-	return &AuthStore{db: db}
+// New creates a new auth postgres store
+func New(db *sqlx.DB) *AuthPg {
+	return &AuthPg{db: db}
 }
 
 // userRow represents a user row in the database
@@ -80,7 +81,7 @@ func (uft *userFieldsTaken) toModel() models.UserFieldsTaken {
 }
 
 // CreateUser creates a user record and returns the new user's ID
-func (s *AuthStore) CreateUser(ctx context.Context, user models.NewUser) (int64, error) {
+func (a *AuthPg) CreateUser(ctx context.Context, user models.NewUser) (int64, error) {
 	const q = `
 		INSERT INTO users (
 			email,
@@ -91,29 +92,29 @@ func (s *AuthStore) CreateUser(ctx context.Context, user models.NewUser) (int64,
 		RETURNING id;
 	`
 
-	rows, err := s.db.NamedQueryContext(ctx, q, map[string]any{
+	rows, err := a.db.NamedQueryContext(ctx, q, map[string]any{
 		"email":         user.Email,
 		"display_name":  user.DisplayName,
 		"name":          user.Name,
 		"password_hash": user.PasswordHash,
 	})
 	if err != nil {
-		return 0, fmt.Errorf("error creating user: %w", mapError(err))
+		return 0, fmt.Errorf("error creating user: %w", postgres.MapError(err))
 	}
-	defer closeRows(rows)
+	defer postgres.CloseRows(rows)
 	if !rows.Next() {
 		return 0, store.ErrNotFound
 	}
 
 	var id int64
 	if err := rows.Scan(&id); err != nil {
-		return 0, fmt.Errorf("error scanning user ID: %w", mapError(err))
+		return 0, fmt.Errorf("error scanning user ID: %w", postgres.MapError(err))
 	}
 	return id, nil
 }
 
 // GetUserByID fetches a user by their ID
-func (s *AuthStore) GetUserByID(ctx context.Context, id int64) (models.User, error) {
+func (a *AuthPg) GetUserByID(ctx context.Context, id int64) (models.User, error) {
 	const q = `
 		SELECT
 			id,
@@ -130,27 +131,27 @@ func (s *AuthStore) GetUserByID(ctx context.Context, id int64) (models.User, err
 		WHERE id = :id
 	`
 
-	rows, err := s.db.NamedQueryContext(ctx, q, map[string]any{
+	rows, err := a.db.NamedQueryContext(ctx, q, map[string]any{
 		"id": id,
 	})
 	if err != nil {
 		return models.User{}, store.ErrNotFound
 	}
-	defer closeRows(rows)
+	defer postgres.CloseRows(rows)
 	if !rows.Next() {
 		return models.User{}, store.ErrNotFound
 	}
 
 	var row userRow
 	if err := rows.StructScan(&row); err != nil {
-		return models.User{}, mapError(err)
+		return models.User{}, postgres.MapError(err)
 	}
 
 	return row.toModel(), nil
 }
 
 // GetUserByEmail fetches a user by their email
-func (s *AuthStore) GetUserByEmail(ctx context.Context, email string) (models.User, error) {
+func (a *AuthPg) GetUserByEmail(ctx context.Context, email string) (models.User, error) {
 	const q = `
 		SELECT
 			id,
@@ -167,41 +168,41 @@ func (s *AuthStore) GetUserByEmail(ctx context.Context, email string) (models.Us
 		WHERE email = :email
 	`
 
-	rows, err := s.db.NamedQueryContext(ctx, q, map[string]any{
+	rows, err := a.db.NamedQueryContext(ctx, q, map[string]any{
 		"email": email,
 	})
 	if err != nil {
-		return models.User{}, mapError(err)
+		return models.User{}, postgres.MapError(err)
 	}
-	defer closeRows(rows)
+	defer postgres.CloseRows(rows)
 	if !rows.Next() {
 		return models.User{}, store.ErrNotFound
 	}
 
 	var row userRow
 	if err := rows.StructScan(&row); err != nil {
-		return models.User{}, mapError(err)
+		return models.User{}, postgres.MapError(err)
 	}
 
 	return row.toModel(), nil
 }
 
 // CheckTakenUserFields checks if another user takes the given fields
-func (s *AuthStore) CheckTakenUserFields(ctx context.Context, request models.NewUserRequest) (models.UserFieldsTaken, error) {
+func (a *AuthPg) CheckTakenUserFields(ctx context.Context, request models.NewUserRequest) (models.UserFieldsTaken, error) {
 	const q = `
 		SELECT
 			EXISTS (SELECT 1 FROM users WHERE email = :email) AS email_taken,
 			EXISTS (SELECT 1 FROM users WHERE display_name = :display_name) AS display_name_taken
 	`
 
-	rows, err := s.db.NamedQueryContext(ctx, q, map[string]any{
+	rows, err := a.db.NamedQueryContext(ctx, q, map[string]any{
 		"email":        request.Email,
 		"display_name": request.DisplayName,
 	})
 	if err != nil {
-		return models.UserFieldsTaken{}, mapError(err)
+		return models.UserFieldsTaken{}, postgres.MapError(err)
 	}
-	defer closeRows(rows)
+	defer postgres.CloseRows(rows)
 
 	if !rows.Next() {
 		return models.UserFieldsTaken{}, store.ErrNotFound
@@ -209,28 +210,28 @@ func (s *AuthStore) CheckTakenUserFields(ctx context.Context, request models.New
 
 	var uft userFieldsTaken
 	if err := rows.StructScan(&uft); err != nil {
-		return models.UserFieldsTaken{}, mapError(err)
+		return models.UserFieldsTaken{}, postgres.MapError(err)
 	}
 
 	return uft.toModel(), nil
 }
 
 // SetUserLastLogin sets the last login time for a user to now
-func (s *AuthStore) SetUserLastLogin(ctx context.Context, id int64) error {
+func (a *AuthPg) SetUserLastLogin(ctx context.Context, id int64) error {
 	const q = `
 		UPDATE users
 		SET last_login = NOW()
 		WHERE id = :id
 	`
 
-	_, err := s.db.NamedExecContext(ctx, q, map[string]any{
+	_, err := a.db.NamedExecContext(ctx, q, map[string]any{
 		"id": id,
 	})
-	return mapError(err)
+	return postgres.MapError(err)
 }
 
 // CreateRefreshToken creates a new refresh token
-func (s *AuthStore) CreateRefreshToken(ctx context.Context, refreshToken models.RefreshToken) error {
+func (a *AuthPg) CreateRefreshToken(ctx context.Context, refreshToken models.RefreshToken) error {
 	const q = `
 		INSERT INTO refresh_tokens (
 			token_hash,
@@ -240,17 +241,17 @@ func (s *AuthStore) CreateRefreshToken(ctx context.Context, refreshToken models.
 		) VALUES (:token_hash, :user_id, :user_agent, :expires_at)
 	`
 
-	_, err := s.db.NamedExecContext(ctx, q, map[string]any{
+	_, err := a.db.NamedExecContext(ctx, q, map[string]any{
 		"token_hash": refreshToken.TokenHash,
 		"user_id":    refreshToken.UserID,
 		"user_agent": refreshToken.UserAgent,
 		"expires_at": refreshToken.ExpiresAt,
 	})
-	return mapError(err)
+	return postgres.MapError(err)
 }
 
 // GetRefreshToken fetches a refresh token by its hash
-func (s *AuthStore) GetRefreshToken(ctx context.Context, tokenHash string) (models.RefreshToken, error) {
+func (a *AuthPg) GetRefreshToken(ctx context.Context, tokenHash string) (models.RefreshToken, error) {
 	const q = `
 		SELECT
 			token_hash,
@@ -262,38 +263,38 @@ func (s *AuthStore) GetRefreshToken(ctx context.Context, tokenHash string) (mode
 		WHERE token_hash = :token_hash
 	`
 
-	rows, err := s.db.NamedQueryContext(ctx, q, map[string]any{
+	rows, err := a.db.NamedQueryContext(ctx, q, map[string]any{
 		"token_hash": tokenHash,
 	})
 	if err != nil {
-		return models.RefreshToken{}, mapError(err)
+		return models.RefreshToken{}, postgres.MapError(err)
 	}
-	defer closeRows(rows)
+	defer postgres.CloseRows(rows)
 	if !rows.Next() {
 		return models.RefreshToken{}, store.ErrNotFound
 	}
 
 	var row refreshTokenRow
 	if err := rows.StructScan(&row); err != nil {
-		return models.RefreshToken{}, mapError(err)
+		return models.RefreshToken{}, postgres.MapError(err)
 	}
 	return row.toModel(), nil
 }
 
 // DeleteRefreshToken deletes a refresh token by its hash
-func (s *AuthStore) DeleteRefreshToken(ctx context.Context, tokenHash string) error {
+func (a *AuthPg) DeleteRefreshToken(ctx context.Context, tokenHash string) error {
 	const q = `
 		DELETE FROM
 			refresh_tokens
 		WHERE token_hash = :token_hash
 	`
 
-	rows, err := s.db.NamedQueryContext(ctx, q, map[string]any{
+	rows, err := a.db.NamedQueryContext(ctx, q, map[string]any{
 		"token_hash": tokenHash,
 	})
 	if err != nil {
-		return mapError(err)
+		return postgres.MapError(err)
 	}
-	defer closeRows(rows)
+	defer postgres.CloseRows(rows)
 	return nil
 }

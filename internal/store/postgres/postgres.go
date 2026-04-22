@@ -41,9 +41,9 @@ func NewDB(ctx context.Context, cfg DBConfig) (*sqlx.DB, error) {
 	return db, nil
 }
 
-// mapError maps postgres errors to our storage layer errors.
+// MapError maps postgres errors to our storage layer errors.
 // Falls back to the original error if not mapped.
-func mapError(err error) error {
+func MapError(err error) error {
 	if errors.Is(err, pgx.ErrNoRows) {
 		return store.ErrNotFound
 	}
@@ -63,9 +63,9 @@ func mapError(err error) error {
 	return err
 }
 
-// closeRows closes a row object and handles any errors.
+// CloseRows closes a row object and handles any errors.
 // Use this instead of deferring rows.Close() directly.
-func closeRows(rows *sqlx.Rows) {
+func CloseRows(rows *sqlx.Rows) {
 	if err := rows.Close(); err != nil {
 		return
 	}

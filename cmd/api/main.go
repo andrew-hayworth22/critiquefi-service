@@ -17,6 +17,8 @@ import (
 	"github.com/andrew-hayworth22/critiquefi-service/internal/middleware"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/server"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres/authpg"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres/syspg"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
@@ -59,8 +61,8 @@ func main() {
 	}
 
 	// Build storage packages
-	sysStore := postgres.NewSysStore(db)
-	authStore := postgres.NewAuthStore(db)
+	sysStore := syspg.New(db)
+	authStore := authpg.New(db)
 
 	// Build business logic packages
 	sysB := sysbus.New(sysStore)

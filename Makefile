@@ -34,6 +34,9 @@ test-business:
 test-http:
 	go test ./internal/http/...
 
+list-deps:
+	cd cmd/api; go list -deps -f '{{define "M"}}{{.Path}}@{{.Version}}{{end}}{{with .Module}}{{if not .Main}}{{if .Replace}}{{template "M" .Replace}}{{else}}{{template "M" .}}{{end}}{{end}}{{end}}' | sort -u
+
 profile-coverage:
 	go test ./... -coverprofile=profiles/coverage.out
 	go tool cover -html=profiles/coverage.out

@@ -1,4 +1,4 @@
-package postgres
+package syspg
 
 import (
 	"context"
@@ -7,18 +7,18 @@ import (
 	"github.com/jmoiron/sqlx"
 )
 
-// SysStore is the postgres implementation of the system store
-type SysStore struct {
+// SysPg is the postgres implementation of the system store
+type SysPg struct {
 	db *sqlx.DB
 }
 
-// NewSysStore creates a new system store
-func NewSysStore(db *sqlx.DB) *SysStore {
-	return &SysStore{db: db}
+// New creates a new system store
+func New(db *sqlx.DB) *SysPg {
+	return &SysPg{db: db}
 }
 
 // Ping tests the database connection
-func (s *SysStore) Ping(ctx context.Context) error {
+func (s *SysPg) Ping(ctx context.Context) error {
 	if err := s.db.PingContext(ctx); err != nil {
 		return store.ErrInternal
 	}

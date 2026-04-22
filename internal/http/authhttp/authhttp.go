@@ -1,4 +1,4 @@
-// Package authbus provides authbus-related HTTP handlers.
+// Package authhttp provides auth-related HTTP handlers.
 package authhttp
 
 import (
@@ -12,7 +12,7 @@ import (
 	"github.com/andrew-hayworth22/critiquefi-service/pkg/httputil"
 )
 
-// Bus defines the business logic needed for authbus handlers
+// Bus defines the business logic needed for auth handlers
 type Bus interface {
 	Register(ctx context.Context, user models.NewUserRequest, userAgent string, remember bool) (string, string, error)
 	Login(ctx context.Context, email, password string, userAgent string, remember bool) (string, string, error)
@@ -82,7 +82,6 @@ func (h *Handler) Register(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		switch {
 		case errors.As(err, &models.ValidationErrors{}):
-
 			httputil.WriteUnprocessable(w, err)
 			return
 		case errors.Is(err, business.ErrDuplicate):
@@ -141,7 +140,7 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 
 	cookie, err := r.Cookie(h.refreshTokenCookieName)
 	if err != nil {
-		httputil.WriteUnauthorized(w)
+		httputil.WriteNoContent(w)
 		return
 	}
 
