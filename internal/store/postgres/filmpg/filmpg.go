@@ -97,8 +97,8 @@ func (f *FilmPg) CreateFilm(ctx context.Context, newFilm models.NewFilm) (int64,
 	return id, nil
 }
 
-// GetFilmById fetches a film by its ID
-func (f *FilmPg) GetFilmById(ctx context.Context, id int64) (models.Film, error) {
+// GetFilmByID fetches a film by its ID
+func (f *FilmPg) GetFilmByID(ctx context.Context, id int64) (models.Film, error) {
 	q := `
 		SELECT
 			id,

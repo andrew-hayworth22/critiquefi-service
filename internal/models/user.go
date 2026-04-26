@@ -1,8 +1,6 @@
 package models
 
-import (
-	"net/mail"
-)
+import "net/mail"
 
 // User is a user of the application
 type User struct {
@@ -23,19 +21,12 @@ type NewUser struct {
 	PasswordHash string
 }
 
-// NewUserRequest represents the data needed from the transport layer to create a new user
 type NewUserRequest struct {
 	Email           string
 	DisplayName     string
 	Name            string
 	Password        string
 	ConfirmPassword string
-}
-
-// UserFieldsTaken represents fields that are taken when creating a user
-type UserFieldsTaken struct {
-	EmailTaken       bool
-	DisplayNameTaken bool
 }
 
 // Validate validates a new user request
@@ -45,8 +36,8 @@ func (u NewUserRequest) Validate() error {
 	if _, err := mail.ParseAddress(u.Email); err != nil {
 		ve.Add("email", "invalid email address")
 	}
-	if len(u.DisplayName) < 3 {
-		ve.Add("display_name", "display name must be between 3 and 20 characters long")
+	if len(u.DisplayName) < 3 || len(u.DisplayName) > 50 {
+		ve.Add("display_name", "display name must be between 3 and 50 characters long")
 	}
 	if len(u.Name) < 3 || len(u.Name) > 50 {
 		ve.Add("name", "name must be between 3 and 50 characters long")
@@ -62,4 +53,12 @@ func (u NewUserRequest) Validate() error {
 		return ve
 	}
 	return nil
+}
+
+// NewUserRequest represents the data needed from the transport layer to create a new user
+
+// UserFieldsTaken represents fields that are taken when creating a user
+type UserFieldsTaken struct {
+	EmailTaken       bool
+	DisplayNameTaken bool
 }

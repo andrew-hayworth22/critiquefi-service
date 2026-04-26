@@ -7,4 +7,5 @@ var (
 	ErrInvalidCredentials = errors.New("invalid credentials")
 	ErrInvalidToken       = errors.New("invalid token")
 	ErrDuplicate          = errors.New("duplicate record")
+	ErrNotFound           = errors.New("not found")
 )

@@ -6,7 +6,7 @@ import (
 )
 
 func DecodeRequest[T any](w http.ResponseWriter, r *http.Request, req *T) bool {
-	if json.NewDecoder(r.Body).Decode(req) != nil {
+	if err := json.NewDecoder(r.Body).Decode(req); err != nil {
 		WriteBadRequest(w, "invalid request body")
 		return false
 	}

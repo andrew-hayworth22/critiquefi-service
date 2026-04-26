@@ -10,14 +10,17 @@ import (
 	"time"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/business/authbus"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/business/filmbus"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/business/sysbus"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/config"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/http/authhttp"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/http/filmhttp"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/http/syshttp"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/middleware"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/server"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres/authpg"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres/filmpg"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/store/postgres/syspg"
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/postgres"
@@ -63,28 +66,32 @@ func main() {
 	// Build storage packages
 	sysStore := syspg.New(db)
 	authStore := authpg.New(db)
+	filmStore := filmpg.New(db)
 
 	// Build business logic packages
-	sysB := sysbus.New(sysStore)
-	authB := authbus.New(authbus.BusConfig{
+	sysBus := sysbus.New(sysStore)
+	authBus := authbus.New(authbus.BusConfig{
 		Store:           authStore,
 		AccessTokenKey:  cfg.JWTSecret,
 		AccessTokenTTL:  cfg.AccessTokenTTL,
 		RefreshTokenTTL: cfg.RefreshTokenTTL,
 	})
+	filmBus := filmbus.New(filmStore)
 
 	// Build handler packages
-	sysHandler := syshttp.New(sysB)
-	authHandler := authhttp.New(authB, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
+	sysHandler := syshttp.New(sysBus)
+	authHandler := authhttp.New(authBus, cfg.RefreshTokenCookieName, cfg.RefreshTokenCookieDomain)
+	filmHandler := filmhttp.New(filmBus)
 
 	// Build middleware packages
-	authMiddleware := middleware.NewAuthMiddleware(authB)
+	authMiddleware := middleware.NewAuthMiddleware(authBus)
 
 	// Build router
 	dependencies := server.Dependencies{
 		Logger:         logger,
 		AuthHandler:    authHandler,
 		SysHandler:     sysHandler,
+		FilmHandler:    filmHandler,
 		AuthMiddleware: authMiddleware,
 	}
 

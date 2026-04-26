@@ -95,7 +95,7 @@ func TestBus_Register(t *testing.T) {
 			storeSetup: func(s *mockStore) {},
 			expectedErr: models.ValidationErrors{
 				"email":            "invalid email address",
-				"display_name":     "display name must be between 3 and 20 characters long",
+				"display_name":     "display name must be between 3 and 50 characters long",
 				"name":             "name must be between 3 and 50 characters long",
 				"password":         "password must be between 8 and 64 characters long",
 				"confirm_password": "passwords do not match",

@@ -18,9 +18,9 @@ func unauthenticatedRoutes(r chi.Router, dependencies Dependencies) func(chi.Rou
 		r.Get("/readiness", dependencies.SysHandler.Readiness)
 
 		// Auth
-		r.Post("/authbus/register", dependencies.AuthHandler.Register)
-		r.Post("/authbus/login", dependencies.AuthHandler.Login)
-		r.Post("/authbus/refresh", dependencies.AuthHandler.Refresh)
+		r.Post("/auth/register", dependencies.AuthHandler.Register)
+		r.Post("/auth/login", dependencies.AuthHandler.Login)
+		r.Post("/auth/refresh", dependencies.AuthHandler.Refresh)
 	}
 }
 
@@ -38,7 +38,11 @@ func protectedRoutes(r chi.Router, dependencies Dependencies) func(chi.Router) {
 		r.Use(dependencies.AuthMiddleware.ForceAuthentication)
 
 		// Auth
-		r.Post("/authbus/logout", dependencies.AuthHandler.Logout)
+		r.Post("/auth/logout", dependencies.AuthHandler.Logout)
+
+		// Film
+		r.Post("/films", dependencies.FilmHandler.CreateFilm)
+		r.Get("/films/{id}", dependencies.FilmHandler.GetFilmById)
 	}
 }
 

@@ -43,7 +43,7 @@ func (c jwtClaims) toModel() models.Claims {
 	}
 }
 
-// Bus defines the authbus business logic
+// Bus defines the auth business logic
 type Bus struct {
 	store           Store
 	accessTokenKey  []byte
@@ -51,7 +51,7 @@ type Bus struct {
 	refreshTokenTTL time.Duration
 }
 
-// BusConfig defines the authbus business logic configuration
+// BusConfig defines the auth business logic configuration
 type BusConfig struct {
 	Store           Store
 	AccessTokenKey  string
@@ -59,7 +59,7 @@ type BusConfig struct {
 	RefreshTokenTTL time.Duration
 }
 
-// New creates a new authbus business logic package
+// New creates a new auth business logic package
 func New(cfg BusConfig) *Bus {
 	return &Bus{
 		store:           cfg.Store,
@@ -110,7 +110,6 @@ func (b *Bus) Register(ctx context.Context, newUserRequest models.NewUserRequest
 	if err != nil {
 		if errors.Is(err, store.ErrDuplicate) {
 			err = business.ErrDuplicate
-			return
 		}
 		return
 	}

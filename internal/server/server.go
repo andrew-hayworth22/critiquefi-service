@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/andrew-hayworth22/critiquefi-service/internal/http/authhttp"
+	"github.com/andrew-hayworth22/critiquefi-service/internal/http/filmhttp"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/http/syshttp"
 	"github.com/andrew-hayworth22/critiquefi-service/internal/middleware"
 	"github.com/go-chi/chi/v5"
@@ -33,6 +34,7 @@ type Dependencies struct {
 	// Handler packages
 	AuthHandler *authhttp.Handler
 	SysHandler  *syshttp.Handler
+	FilmHandler *filmhttp.Handler
 
 	// Middleware packages
 	AuthMiddleware *middleware.AuthMiddleware

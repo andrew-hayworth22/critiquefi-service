@@ -97,7 +97,7 @@ func TestFilmPg_GetFilmByID(t *testing.T) {
 
 		for _, tc := range cases {
 			t.Run(tc.name, func(t *testing.T) {
-				film, err := s.GetFilmById(context.Background(), tc.filmID)
+				film, err := s.GetFilmByID(context.Background(), tc.filmID)
 				testutil.CheckErr(err, tc.expectedErr, t)
 
 				if film.ID != tc.expectedFilm.ID {

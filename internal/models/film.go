@@ -85,3 +85,19 @@ type NewFilm struct {
 	RuntimeMinutes     *int
 	ExternalReferences []ExternalReference
 }
+
+func (nf *NewFilm) Validate() error {
+	ve := ValidationErrors{}
+
+	if len(nf.Title) == 0 || len(nf.Title) > 250 {
+		ve.Add("title", "title is required")
+	}
+	if nf.Description != nil && len(*nf.Description) > 500 {
+		ve.Add("description", "description must be less than 500 characters")
+	}
+
+	if ve.Any() {
+		return ve
+	}
+	return nil
+}
